@@ -15,8 +15,8 @@ def crop_and_resize(
     input_tensor: Tensor,
     boxes: Tensor,
     size: Tuple[int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
 ) -> Tensor:
     r"""Extract crops from 2D images (4D tensor) and resize given a bounding box.
@@ -88,8 +88,8 @@ def crop_and_resize(
 def center_crop(
     input_tensor: Tensor,
     size: Tuple[int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
 ) -> Tensor:
     r"""Crop the 2D images (4D tensor) from the center.
@@ -166,8 +166,8 @@ def crop_by_boxes(
     input_tensor: Tensor,
     src_box: Tensor,
     dst_box: Tensor,
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
     validate_boxes: bool = True,
 ) -> Tensor:
@@ -232,8 +232,7 @@ def crop_by_boxes(
     bbox: Tuple[Tensor, Tensor] = infer_bbox_shape(dst_box)
     if not ((bbox[0] == bbox[0][0]).all() and (bbox[1] == bbox[1][0]).all()):
         raise AssertionError(
-            f"Cropping height, width and depth must be exact same in a batch. "
-            f"Got height {bbox[0]} and width {bbox[1]}."
+            f"Cropping height, width and depth must be exact same in a batch. Got height {bbox[0]} and width {bbox[1]}."
         )
 
     h_out: int = int(bbox[0][0].item())
@@ -248,8 +247,8 @@ def crop_by_transform_mat(
     input_tensor: Tensor,
     transform: Tensor,
     out_size: Tuple[int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
 ) -> Tensor:
     """Perform crop transform on 2D images (4D tensor) given a perspective transformation matrix.
@@ -288,7 +287,7 @@ def crop_by_indices(
     input_tensor: Tensor,
     src_box: Tensor,
     size: Optional[Tuple[int, int]] = None,
-    interpolation: str = 'bilinear',
+    interpolation: str = "bilinear",
     align_corners: Optional[bool] = None,
     antialias: bool = False,
     shape_compensation: str = "resize",

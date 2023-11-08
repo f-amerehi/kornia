@@ -25,6 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Image Processing",
   "Topic :: Software Development :: Libraries",
@@ -70,10 +71,8 @@ requires = [
   [tool.setuptools.package-data]
     kornia = ["py.typed"]
 
-[tool.black]
-  line-length = 120
-  skip-magic-trailing-comma = true
-  skip-string-normalization = true
+[tool.distutils.bdist_wheel]
+  universal = true
 
 [tool.ruff]
   line-length = 120
@@ -139,10 +138,15 @@ requires = [
   ignore = [
     "PLW2901", # Allow overwritten values on loops
     "PLR0915", # Allow condition check in list comprehension
+    "UP007", # Prefer Optional[], Union[] over | due to torch jit scripting
   ]
+
+  [tool.ruff.format]
+    skip-magic-trailing-comma = false
 
   [tool.ruff.isort]
     known-first-party = ["examples", "kornia", "test"]
+    split-on-trailing-comma = true
 
   [tool.ruff.mccabe]
     max-complexity = 20
@@ -167,17 +171,50 @@ requires = [
   markers =[
     "grad: mark a test as gradcheck test",
     "jit: mark a test as torchscript test",
-    "nn: mark a test as module test"
+    "nn: mark a test as module test",
+    "slow: mark test as slow to run",
+]
+
+[tool.coverage.run]
+branch = true
+source = [
+    'kornia/',
+]
+omit = [
+    '*/__main__.py',
+    '*/setup.py',
 ]
 
 [tool.coverage.report]
-exclude_lines = [
-  "def __repr__",
-  "if __name__ == .__main__.:",
-  "if 0:",
-  "if self.debug:",
-  "pragma: no cover",
-  "raise",
+show_missing = true
+skip_covered = true
+fail_under = 87
+exclude_lines =[
+    # Based into the covdefaults plugin config
+    # a more strict default pragma
+    '\# pragma: no cover\b',
+
+    # allow defensive code
+    '^\s*raise AssertionError\b',
+    '^\s*raise NotImplementedError\b',
+    '^\s*return NotImplemented\b',
+    '^\s*raise$',
+
+    # typing-related code
+    '^\s*if (False|TYPE_CHECKING):',
+    ': \.\.\.(\s*#.*)?$',
+    '^ +\.\.\.$',
+
+    # ----------------------------
+      "def __repr__",
+      "if __name__ == .__main__.:",
+      "if 0:",
+      "if self.debug:",
+]
+
+partial_branches = [
+    # a more strict default pragma
+    '\# pragma: no cover\b',
 ]
 
 [tool.mypy]
@@ -192,9 +229,6 @@ exclude_lines = [
   show_error_codes = true
   warn_redundant_casts = true
   warn_unused_ignores = true
-
-[tool.distutils.bdist_wheel]
-  universal = true
 
 [tool.pydocstyle]
   ignore = ['D105','D107','D203','D204','D213','D406','D407']

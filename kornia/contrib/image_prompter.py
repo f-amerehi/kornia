@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, Optional, Union
 
 import torch
 
@@ -54,10 +54,10 @@ class ImagePrompter:
     def __init__(
         self,
         config: SamConfig = SamConfig(
-            model_type='vit_h', checkpoint='https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth'
+            model_type="vit_h", checkpoint="https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth"
         ),
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
     ) -> None:
         super().__init__()
         warnings.warn(
@@ -67,8 +67,8 @@ class ImagePrompter:
         if isinstance(config, SamConfig):
             self.model = Sam.from_config(config)
             transforms = (LongestMaxSize(self.model.image_encoder.img_size, p=1.0),)
-            self.pixel_mean: Tensor | None = tensor([123.675, 116.28, 103.53], device=device, dtype=dtype) / 255
-            self.pixel_std: Tensor | None = tensor([58.395, 57.12, 57.375], device=device, dtype=dtype) / 255
+            self.pixel_mean: Optional[Tensor] = tensor([123.675, 116.28, 103.53], device=device, dtype=dtype) / 255
+            self.pixel_std: Optional[Tensor] = tensor([58.395, 57.12, 57.375], device=device, dtype=dtype) / 255
         else:
             raise NotImplementedError
 
@@ -82,10 +82,10 @@ class ImagePrompter:
         self._input_encoder_size: None | tuple[int, int] = None
         self.reset_image()
 
-    def preprocess_image(self, x: Tensor, mean: Tensor | None = None, std: Tensor | None = None) -> Tensor:
+    def preprocess_image(self, x: Tensor, mean: Optional[Tensor] = None, std: Optional[Tensor] = None) -> Tensor:
         """Normalize and pad a tensor.
 
-        For normalize the tensor: will priorize the `mean` and `std` passed as argument, if None will use the default
+        For normalize the tensor: will prioritize the `mean` and `std` passed as argument, if None will use the default
         Sam Dataset values.
 
         For pad the tensor: Will pad the tensor into the right and bottom to match with the size of
@@ -113,7 +113,7 @@ class ImagePrompter:
         return x
 
     @torch.no_grad()
-    def set_image(self, image: Tensor, mean: Tensor | None = None, std: Tensor | None = None) -> None:
+    def set_image(self, image: Tensor, mean: Optional[Tensor] = None, std: Optional[Tensor] = None) -> None:
         """Set the embeddings from the given image with `image_decoder` of the model.
 
         Prepare the given image with the selected transforms and the preprocess method.
@@ -123,13 +123,13 @@ class ImagePrompter:
                    pixel values with the mean and std defined in its initialization. Expected to be into a float32
                    dtype. Shape :math:`(3, H, W)`.
         """
-        KORNIA_CHECK_SHAPE(image, ['3', 'H', 'W'])
+        KORNIA_CHECK_SHAPE(image, ["3", "H", "W"])
 
         self.reset_image()
 
         self._original_image_size = (image.shape[-2], image.shape[-1])
 
-        image = self.transforms(image, data_keys=['input'])
+        image = self.transforms(image, data_keys=["input"])
         self._tfs_params = self.transforms._params
         self._input_image_size = (image.shape[-2], image.shape[-1])
 
@@ -142,9 +142,9 @@ class ImagePrompter:
 
     def _valid_keypoints(self, keypoints: Keypoints | Tensor, labels: Tensor) -> Keypoints:
         """Validate the keypoints shape and ensure to be a Keypoints."""
-        KORNIA_CHECK_SHAPE(keypoints.data, ['K', 'N', '2'])
-        KORNIA_CHECK_SHAPE(labels.data, ['K', 'N'])
-        KORNIA_CHECK(keypoints.shape[0] == labels.shape[0], 'The keypoints and labels should have the same batch size')
+        KORNIA_CHECK_SHAPE(keypoints.data, ["K", "N", "2"])
+        KORNIA_CHECK_SHAPE(labels.data, ["K", "N"])
+        KORNIA_CHECK(keypoints.shape[0] == labels.shape[0], "The keypoints and labels should have the same batch size")
 
         if isinstance(keypoints, Tensor):
             keypoints = Keypoints.from_tensor(keypoints)
@@ -154,19 +154,19 @@ class ImagePrompter:
     def _valid_boxes(self, boxes: Boxes | Tensor) -> Boxes:
         """Validate the boxes shape and ensure to be a Boxes into xyxy mode."""
         if isinstance(boxes, Tensor):
-            KORNIA_CHECK_SHAPE(boxes.data, ['K', '4'])
-            boxes = Boxes(boxes, mode='xyxy')
+            KORNIA_CHECK_SHAPE(boxes.data, ["K", "4"])
+            boxes = Boxes(boxes, mode="xyxy")
 
-        if boxes.mode == 'xyxy':
+        if boxes.mode == "xyxy":
             boxes_xyxy = boxes
         else:
-            boxes_xyxy = Boxes(boxes.to_tensor(mode='xyxy'), mode='xyxy')
+            boxes_xyxy = Boxes(boxes.to_tensor(mode="xyxy"), mode="xyxy")
 
         return boxes_xyxy
 
     def _valid_masks(self, masks: Tensor) -> Tensor:
         """Validate the input masks shape."""
-        KORNIA_CHECK_SHAPE(masks, ['K', '1', '256', '256'])
+        KORNIA_CHECK_SHAPE(masks, ["K", "1", "256", "256"])
         return masks
 
     def _transform_prompts(
@@ -177,10 +177,10 @@ class ImagePrompter:
 
     def preprocess_prompts(
         self,
-        keypoints: Keypoints | Tensor | None = None,
-        keypoints_labels: Tensor | None = None,
-        boxes: Boxes | Tensor | None = None,
-        masks: Tensor | None = None,
+        keypoints: Optional[Union[Keypoints, Tensor]] = None,
+        keypoints_labels: Optional[Tensor] = None,
+        boxes: Optional[Union[Boxes, Tensor]] = None,
+        masks: Optional[Tensor] = None,
     ) -> Prompts:
         """Validate and preprocess the given prompts to be aligned with the input image."""
         data_keys = []
@@ -188,12 +188,12 @@ class ImagePrompter:
 
         if isinstance(keypoints, (Keypoints, Tensor)) and isinstance(keypoints_labels, Tensor):
             keypoints = self._valid_keypoints(keypoints, keypoints_labels)
-            data_keys.append('keypoints')
+            data_keys.append("keypoints")
             to_transform.append(keypoints)
 
         if isinstance(boxes, (Boxes, Tensor)):
             self._valid_boxes(boxes)
-            data_keys.append('bbox_xyxy')
+            data_keys.append("bbox_xyxy")
             to_transform.append(boxes)
 
         if isinstance(masks, Tensor):
@@ -201,15 +201,15 @@ class ImagePrompter:
 
         data = self._transform_prompts(*to_transform, data_keys=data_keys)
 
-        if 'keypoints' in data and isinstance(data['keypoints'], Keypoints):
-            kpts_tensor = data['keypoints'].to_tensor()
+        if "keypoints" in data and isinstance(data["keypoints"], Keypoints):
+            kpts_tensor = data["keypoints"].to_tensor()
             if KORNIA_CHECK_IS_TENSOR(kpts_tensor) and KORNIA_CHECK_IS_TENSOR(keypoints_labels):
                 points = (kpts_tensor[None, ...], keypoints_labels)
         else:
             points = None
 
-        if 'bbox_xyxy' in data and isinstance(data['bbox_xyxy'], Boxes):
-            _bbox = data['bbox_xyxy'].to_tensor(mode='xyxy')
+        if "bbox_xyxy" in data and isinstance(data["bbox_xyxy"], Boxes):
+            _bbox = data["bbox_xyxy"].to_tensor(mode="xyxy")
             if KORNIA_CHECK_IS_TENSOR(_bbox):
                 bbox = _bbox
         else:
@@ -220,10 +220,10 @@ class ImagePrompter:
     @torch.no_grad()
     def predict(
         self,
-        keypoints: Keypoints | Tensor | None = None,
-        keypoints_labels: Tensor | None = None,
-        boxes: Boxes | Tensor | None = None,
-        masks: Tensor | None = None,
+        keypoints: Optional[Union[Keypoints, Tensor]] = None,
+        keypoints_labels: Optional[Tensor] = None,
+        boxes: Optional[Union[Boxes, Tensor]] = None,
+        masks: Optional[Tensor] = None,
         multimask_output: bool = True,
         output_original_size: bool = True,
     ) -> SegmentationResults:
@@ -249,7 +249,7 @@ class ImagePrompter:
             A prediction with the logits and scores (IoU of each predicted mask)
         """
 
-        KORNIA_CHECK(self.is_image_set, 'An image must be set with `self.set_image(...)` before `predict` be called!')
+        KORNIA_CHECK(self.is_image_set, "An image must be set with `self.set_image(...)` before `predict` be called!")
 
         prompts = self.preprocess_prompts(keypoints, keypoints_labels, boxes, masks)
 
@@ -285,7 +285,7 @@ class ImagePrompter:
         self._input_image_size = None
         self._input_encoder_size = None
 
-        if hasattr(self, 'image_embeddings'):
+        if hasattr(self, "image_embeddings"):
             del self.image_embeddings
 
         self.image_embeddings = None
@@ -296,8 +296,8 @@ class ImagePrompter:
         *,
         fullgraph: bool = False,
         dynamic: bool = False,
-        backend: str = 'inductor',
-        mode: str | None = None,
+        backend: str = "inductor",
+        mode: Optional[str] = None,
         options: dict[Any, Any] = {},
         disable: bool = False,
     ) -> None:

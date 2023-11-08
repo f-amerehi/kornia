@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Optional
 
 import torch
 
@@ -195,7 +196,7 @@ def bbox_to_mask(boxes: torch.Tensor, width: int, height: int) -> torch.Tensor:
                  [0., 0., 0., 0., 0.]]])
     """
     validate_bbox(boxes)
-    # zero padding the surroudings
+    # zero padding the surroundings
     mask = torch.zeros((len(boxes), height + 2, width + 2), dtype=boxes.dtype, device=boxes.device)
     # push all points one pixel off
     # in order to zero-out the fully filled rows or columns
@@ -439,7 +440,7 @@ def bbox_generator3d(
 
 
 def transform_bbox(
-    trans_mat: torch.Tensor, boxes: torch.Tensor, mode: str = "xyxy", restore_coordinates: bool | None = None
+    trans_mat: torch.Tensor, boxes: torch.Tensor, mode: str = "xyxy", restore_coordinates: Optional[bool] = None
 ) -> torch.Tensor:
     r"""Apply a transformation matrix to a box or batch of boxes.
 
@@ -490,7 +491,7 @@ def transform_bbox(
         restored_boxes[..., 3] = torch.max(transformed_boxes[..., [1, 3]], dim=-1)[0]
         transformed_boxes = restored_boxes
 
-    if mode == 'xywh':
+    if mode == "xywh":
         transformed_boxes[..., 2] = transformed_boxes[..., 2] - transformed_boxes[..., 0]
         transformed_boxes[..., 3] = transformed_boxes[..., 3] - transformed_boxes[..., 1]
 

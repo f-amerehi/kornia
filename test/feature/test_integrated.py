@@ -233,20 +233,21 @@ class TestGFTTAffNetHardNet:
 # TODO: add kornia.testing.BaseTester
 class TestLocalFeatureMatcher:
     def test_smoke(self, device):
-        matcher = LocalFeatureMatcher(SIFTFeature(5), DescriptorMatcher('snn', 0.8)).to(device)
+        matcher = LocalFeatureMatcher(SIFTFeature(5), DescriptorMatcher("snn", 0.8)).to(device)
         assert matcher is not None
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["loftr_homo"], indirect=True)
     def test_nomatch(self, device, dtype, data):
-        matcher = LocalFeatureMatcher(GFTTAffNetHardNet(100), DescriptorMatcher('snn', 0.8)).to(device, dtype)
+        matcher = LocalFeatureMatcher(GFTTAffNetHardNet(100), DescriptorMatcher("snn", 0.8)).to(device, dtype)
         data_dev = utils.dict_to(data, device, dtype)
         with torch.no_grad():
             out = matcher({"image0": data_dev["image0"], "image1": 0 * data_dev["image0"]})
-        assert len(out['keypoints0']) == 0
+        assert len(out["keypoints0"]) == 0
 
     @pytest.mark.skip("Takes too long time (but works)")
     def test_gradcheck(self, device):
-        matcher = LocalFeatureMatcher(SIFTFeature(5), DescriptorMatcher('nn', 1.0)).to(device)
+        matcher = LocalFeatureMatcher(SIFTFeature(5), DescriptorMatcher("nn", 1.0)).to(device)
         patches = torch.rand(1, 1, 32, 32, device=device)
         patches05 = resize(patches, (48, 48))
         patches = utils.tensor_to_gradcheck_var(patches)  # to var
@@ -257,34 +258,36 @@ class TestLocalFeatureMatcher:
 
         assert gradcheck(proxy_forward, (patches, patches05), eps=1e-4, atol=1e-4, raise_exception=True, fast_mode=True)
 
+    @pytest.mark.slow
     @pytest.mark.skipif(torch_version_le(1, 9, 1), reason="Fails for bached torch.linalg.solve")
     @pytest.mark.parametrize("data", ["loftr_homo"], indirect=True)
     def test_real_sift(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
-        matcher = LocalFeatureMatcher(SIFTFeature(1000), DescriptorMatcher('snn', 0.8)).to(device, dtype)
-        ransac = RANSAC('homography', 1.0, 1024, 5).to(device, dtype)
+        matcher = LocalFeatureMatcher(SIFTFeature(1000), DescriptorMatcher("snn", 0.8)).to(device, dtype)
+        ransac = RANSAC("homography", 1.0, 1024, 5).to(device, dtype)
         data_dev = utils.dict_to(data, device, dtype)
-        pts_src = data_dev['pts0']
-        pts_dst = data_dev['pts1']
+        pts_src = data_dev["pts0"]
+        pts_dst = data_dev["pts1"]
         with torch.no_grad():
             out = matcher(data_dev)
-        homography, inliers = ransac(out['keypoints0'], out['keypoints1'])
+        homography, inliers = ransac(out["keypoints0"], out["keypoints1"])
         assert inliers.sum().item() > 50  # we have enough inliers
         # Reprojection error of 5px is OK
         assert_close(transform_points(homography[None], pts_src[None]), pts_dst[None], rtol=5e-2, atol=5)
 
+    @pytest.mark.slow
     @pytest.mark.skipif(torch_version_le(1, 9, 1), reason="Fails for bached torch.linalg.solve")
     @pytest.mark.parametrize("data", ["loftr_homo"], indirect=True)
     def test_real_sift_preextract(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
         feat = SIFTFeature(1000).to(device, dtype)
-        matcher = LocalFeatureMatcher(feat, DescriptorMatcher('snn', 0.8)).to(device)
-        ransac = RANSAC('homography', 1.0, 1024, 5).to(device, dtype)
+        matcher = LocalFeatureMatcher(feat, DescriptorMatcher("snn", 0.8)).to(device)
+        ransac = RANSAC("homography", 1.0, 1024, 5).to(device, dtype)
         data_dev = utils.dict_to(data, device, dtype)
-        pts_src = data_dev['pts0']
-        pts_dst = data_dev['pts1']
+        pts_src = data_dev["pts0"]
+        pts_dst = data_dev["pts1"]
 
         lafs, _, descs = feat(data_dev["image0"])
         data_dev["lafs0"] = lafs
@@ -296,43 +299,45 @@ class TestLocalFeatureMatcher:
 
         with torch.no_grad():
             out = matcher(data_dev)
-        homography, inliers = ransac(out['keypoints0'], out['keypoints1'])
+        homography, inliers = ransac(out["keypoints0"], out["keypoints1"])
         assert inliers.sum().item() > 50  # we have enough inliers
         # Reprojection error of 5px is OK
         assert_close(transform_points(homography[None], pts_src[None]), pts_dst[None], rtol=5e-2, atol=5)
 
+    @pytest.mark.slow
     @pytest.mark.skipif(torch_version_le(1, 9, 1), reason="Fails for bached torch.linalg.solve")
     @pytest.mark.skipif(sys.platform == "win32", reason="this test takes so much memory in the CI with Windows")
     @pytest.mark.parametrize("data", ["loftr_homo"], indirect=True)
     def test_real_gftt(self, device, dtype, data):
         # This is not unit test, but that is quite good integration test
-        matcher = LocalFeatureMatcher(GFTTAffNetHardNet(1000), DescriptorMatcher('snn', 0.8)).to(device, dtype)
-        ransac = RANSAC('homography', 1.0, 1024, 5).to(device, dtype)
+        matcher = LocalFeatureMatcher(GFTTAffNetHardNet(1000), DescriptorMatcher("snn", 0.8)).to(device, dtype)
+        ransac = RANSAC("homography", 1.0, 1024, 5).to(device, dtype)
         data_dev = utils.dict_to(data, device, dtype)
-        pts_src = data_dev['pts0']
-        pts_dst = data_dev['pts1']
+        pts_src = data_dev["pts0"]
+        pts_dst = data_dev["pts1"]
         with torch.no_grad():
             torch.manual_seed(0)
             out = matcher(data_dev)
-        homography, inliers = ransac(out['keypoints0'], out['keypoints1'])
+        homography, inliers = ransac(out["keypoints0"], out["keypoints1"])
         assert inliers.sum().item() > 50  # we have enough inliers
         # Reprojection error of 5px is OK
         assert_close(transform_points(homography[None], pts_src[None]), pts_dst[None], rtol=5e-2, atol=5)
 
+    @pytest.mark.slow
     @pytest.mark.skipif(torch_version_le(1, 9, 1), reason="Fails for bached torch.linalg.solve")
     @pytest.mark.skipif(sys.platform == "win32", reason="this test takes so much memory in the CI with Windows")
     @pytest.mark.parametrize("data", ["loftr_homo"], indirect=True)
     def test_real_keynet(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
-        matcher = LocalFeatureMatcher(KeyNetHardNet(500), DescriptorMatcher('snn', 0.9)).to(device, dtype)
-        ransac = RANSAC('homography', 1.0, 1024, 5).to(device, dtype)
+        matcher = LocalFeatureMatcher(KeyNetHardNet(500), DescriptorMatcher("snn", 0.9)).to(device, dtype)
+        ransac = RANSAC("homography", 1.0, 1024, 5).to(device, dtype)
         data_dev = utils.dict_to(data, device, dtype)
-        pts_src = data_dev['pts0']
-        pts_dst = data_dev['pts1']
+        pts_src = data_dev["pts0"]
+        pts_dst = data_dev["pts1"]
         with torch.no_grad():
             out = matcher(data_dev)
-        homography, inliers = ransac(out['keypoints0'], out['keypoints1'])
+        homography, inliers = ransac(out["keypoints0"], out["keypoints1"])
         assert inliers.sum().item() > 50  # we have enough inliers
         # Reprojection error of 5px is OK
         assert_close(transform_points(homography[None], pts_src[None]), pts_dst[None], rtol=5e-2, atol=5)
@@ -343,7 +348,7 @@ class TestLocalFeatureMatcher:
         patches = torch.rand(B, C, H, W, device=device, dtype=dtype)
         patches2x = resize(patches, (48, 48))
         inputs = {"image0": patches, "image1": patches2x}
-        model = LocalFeatureMatcher(SIFTDescriptor(32), DescriptorMatcher('snn', 0.8)).to(device).eval()
+        model = LocalFeatureMatcher(SIFTDescriptor(32), DescriptorMatcher("snn", 0.8)).to(device).eval()
         model_jit = torch.jit.script(model)
 
         out = model(inputs)

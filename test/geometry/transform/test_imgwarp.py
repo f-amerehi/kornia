@@ -11,6 +11,16 @@ from kornia.utils._compat import torch_version, torch_version_lt
 from kornia.utils.helpers import _torch_inverse_cast
 
 
+class DummyNNModule(torch.nn.Module):
+    def __init__(self, h: int, w: int, align_corners: bool, padding_mode: str):
+        super().__init__()
+        self.h = h
+        self.w = w
+
+    def forward(self, x, y):
+        return kornia.geometry.transform.warp_affine(x, y, dsize=(self.h, self.w), align_corners=False)
+
+
 class TestGetPerspectiveTransform:
     @pytest.mark.parametrize("batch_size", [1, 2, 5])
     def test_smoke(self, device, dtype, batch_size):
@@ -253,6 +263,36 @@ class TestWarpAffine:
         assert_close(top_row_mean, fill_value)
         assert_close(first_col_mean, fill_value)
 
+    @pytest.mark.parametrize("num_channels", [1, 3, 5])
+    def test_fill_padding_channels(self, device, dtype, num_channels):
+        offset = 1.0
+        h, w = 3, 4
+        aff_ab = torch.eye(2, 3, device=device, dtype=dtype)[None]
+        aff_ab[..., -1] += offset
+
+        img_b = torch.arange(float(num_channels * h * w), device=device, dtype=dtype).view(1, num_channels, h, w)
+
+        fill_value = torch.zeros(num_channels, device=device, dtype=dtype)
+
+        img_a = kornia.geometry.warp_affine(img_b, aff_ab, (h, w), padding_mode="fill", fill_value=fill_value)
+
+        assert_close(img_a[:, :, :1, :1].squeeze(), fill_value.squeeze())
+
+    @pytest.mark.parametrize("align_corners", (True, False))
+    @pytest.mark.parametrize("padding_mode", ("zeros", "fill"))
+    def test_jit_script(self, device, dtype, align_corners, padding_mode):
+        offset = 1.0
+        h, w = 3, 4
+        aff_ab = torch.eye(2, 3, device=device, dtype=dtype)[None]
+        aff_ab[..., -1] += offset
+
+        img_b = torch.arange(float(3 * h * w), device=device, dtype=dtype).view(1, 3, h, w)
+        net = DummyNNModule(3, 4, align_corners, padding_mode)
+        script_net = torch.jit.script(net)
+
+        assert isinstance(script_net, torch.jit.ScriptModule)
+        assert_close(script_net(img_b, aff_ab), net(img_b, aff_ab))
+
 
 class TestWarpPerspective:
     def test_smoke(self, device, dtype):
@@ -418,8 +458,8 @@ class TestWarpPerspective:
         assert_close(patch_warped, expected)
 
     def test_dynamo(self, device, dtype, torch_optimizer):
-        if dtype == torch.float64 and torch_version() in {'2.0.0', '2.0.1'} and sys.platform == 'linux':
-            pytest.xfail('Failling on CI on ubuntu with torch 2.0.0 for float64')
+        if dtype == torch.float64 and torch_version() in {"2.0.0", "2.0.1"} and sys.platform == "linux":
+            pytest.xfail("Failing on CI on ubuntu with torch 2.0.0 for float64")
         img = torch.rand(1, 2, 3, 4, device=device, dtype=dtype)
         H_ab = kornia.eye_like(3, img)
         args = (img, H_ab, (4, 5))
@@ -558,12 +598,12 @@ class TestRemap:
 
         assert gradcheck(
             kornia.geometry.remap,
-            (img, grid[..., 0], grid[..., 1], 'bilinear', 'zeros', True),
+            (img, grid[..., 0], grid[..., 1], "bilinear", "zeros", True),
             raise_exception=True,
             fast_mode=True,
         )
 
-    @pytest.mark.skip(reason='Not fully support dynamo')
+    @pytest.mark.skip(reason="Not fully support dynamo")
     def test_dynamo(self, device, dtype, torch_optimizer):
         # TODO: add dynamo support to create_meshgrid
         batch_size, channels, height, width = 1, 1, 3, 4
@@ -575,7 +615,7 @@ class TestRemap:
         op = kornia.geometry.remap
         op_script = torch_optimizer(op)
 
-        inputs = (img, grid[..., 0], grid[..., 1], 'bilinear', 'zeros', True)
+        inputs = (img, grid[..., 0], grid[..., 1], "bilinear", "zeros", True)
         actual = op_script(*inputs)
         expected = op(*inputs)
         assert_close(actual, expected, rtol=1e-4, atol=1e-4)

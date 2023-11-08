@@ -49,26 +49,27 @@ class TestRandomMotionBlur:
 
         expected = motion_blur(
             input,
-            f._params['ksize_factor'].unique().item(),
-            f._params['angle_factor'],
-            f._params['direction_factor'],
-            f.flags['border_type'].name.lower(),
+            f._params["ksize_factor"].unique().item(),
+            f._params["angle_factor"],
+            f._params["direction_factor"],
+            f.flags["border_type"].name.lower(),
         )
 
         assert_close(output, expected, rtol=1e-4, atol=1e-4)
 
+    @pytest.mark.slow
     def test_gradcheck(self, device):
         torch.manual_seed(0)  # for random reproductibility
         inp = torch.rand((1, 3, 11, 7)).to(device)
         inp = tensor_to_gradcheck_var(inp)  # to var
         # TODO: Gradcheck for param random gen failed. Suspect get_motion_kernel2d issue.
         params = {
-            'batch_prob': torch.tensor([True]),
-            'ksize_factor': torch.tensor([31]),
-            'angle_factor': torch.tensor([30.0]),
-            'direction_factor': torch.tensor([-0.5]),
-            'border_type': torch.tensor([0]),
-            'idx': torch.tensor([0]),
+            "batch_prob": torch.tensor([True]),
+            "ksize_factor": torch.tensor([31]),
+            "angle_factor": torch.tensor([30.0]),
+            "direction_factor": torch.tensor([-0.5]),
+            "border_type": torch.tensor([0]),
+            "idx": torch.tensor([0]),
         }
         assert gradcheck(
             RandomMotionBlur(kernel_size=3, angle=(10, 30), direction=(-0.5, 0.5), p=1.0),
@@ -118,25 +119,26 @@ class TestRandomMotionBlur3D:
 
         expected = motion_blur3d(
             input,
-            f._params['ksize_factor'].unique().item(),
-            f._params['angle_factor'],
-            f._params['direction_factor'],
-            f.flags['border_type'].name.lower(),
+            f._params["ksize_factor"].unique().item(),
+            f._params["angle_factor"],
+            f._params["direction_factor"],
+            f.flags["border_type"].name.lower(),
         )
 
         assert_close(output, expected, rtol=1e-4, atol=1e-4)
 
+    @pytest.mark.slow
     def test_gradcheck(self, device, dtype):
         torch.manual_seed(0)  # for random reproductibility
         inp = torch.rand((1, 3, 6, 7), device=device, dtype=dtype)
         inp = tensor_to_gradcheck_var(inp)  # to var
         params = {
-            'batch_prob': torch.tensor([True]),
-            'ksize_factor': torch.tensor([31]),
-            'angle_factor': torch.tensor([[30.0, 30.0, 30.0]]),
-            'direction_factor': torch.tensor([-0.5]),
-            'border_type': torch.tensor([0]),
-            'idx': torch.tensor([0]),
+            "batch_prob": torch.tensor([True]),
+            "ksize_factor": torch.tensor([31]),
+            "angle_factor": torch.tensor([[30.0, 30.0, 30.0]]),
+            "direction_factor": torch.tensor([-0.5]),
+            "border_type": torch.tensor([0]),
+            "idx": torch.tensor([0]),
         }
         assert gradcheck(
             RandomMotionBlur3D(kernel_size=3, angle=(10, 30), direction=(-0.5, 0.5), p=1.0),

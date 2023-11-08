@@ -8,7 +8,7 @@ from torch.distributions import Bernoulli, RelaxedBernoulli
 from kornia.augmentation.base import _AugmentationBase
 from kornia.core import Module, Tensor
 
-T = TypeVar('T', bound='OperationBase')
+T = TypeVar("T", bound="OperationBase")
 
 
 class OperationBase(Module):
@@ -159,7 +159,7 @@ class OperationBase(Module):
     @property
     def transform_matrix(self) -> Optional[Tensor]:
         if hasattr(self.op, "transform_matrix"):
-            return self.op.transform_matrix  # type:ignore
+            return self.op.transform_matrix
         return None
 
     @property

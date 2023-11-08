@@ -4,6 +4,7 @@ import importlib
 import math
 import os
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import matplotlib as mpl
@@ -20,18 +21,18 @@ mpl.use("Agg")
 
 
 def download_tutorials_examples(download_infos: dict[str, str], directory: Path):
-    URL_BASE = 'https://raw.githubusercontent.com/kornia/tutorials/master/'
+    URL_BASE = "https://raw.githubusercontent.com/kornia/tutorials/master/"
     for filename, path in download_infos.items():
         url = URL_BASE + path
         # perform request
         response = requests.get(url, timeout=60).content
 
         path = directory / filename
-        with open(path, 'wb') as fp:
+        with open(path, "wb") as fp:
             fp.write(response)
 
 
-def read_img_from_url(url: str, resize_to: tuple[int, int] | None = None) -> torch.Tensor:
+def read_img_from_url(url: str, resize_to: Optional[tuple[int, int]] = None, **resize_kwargs) -> torch.Tensor:
     # perform request
     response = requests.get(url, timeout=60).content
     # convert to array of ints
@@ -42,9 +43,9 @@ def read_img_from_url(url: str, resize_to: tuple[int, int] | None = None) -> tor
     img_t: torch.Tensor = K.utils.image_to_tensor(img, keepdim=False)  # 1xCxHXW
     img_t = img_t.float() / 255.0
     if resize_to is None:
-        img_t = K.geometry.resize(img_t, 184)
+        img_t = K.geometry.resize(img_t, 184, **resize_kwargs)
     else:
-        img_t = K.geometry.resize(img_t, resize_to)
+        img_t = K.geometry.resize(img_t, resize_to, **resize_kwargs)
     return img_t
 
 
@@ -52,7 +53,7 @@ def transparent_pad(src: Tensor, shape: tuple[int, int]) -> Tensor:
     """Apply a transparent pad to src (centerized) to match with shape (h, w)"""
     w_pad = abs(int(src.shape[-1] - shape[-1]) // 2)
     h_pad = abs(int(src.shape[-2] - shape[-2]) // 2)
-    return torch.nn.functional.pad(K.color.rgb_to_rgba(src, 1.0), (w_pad, w_pad, h_pad, h_pad), 'constant', 0.0)
+    return torch.nn.functional.pad(K.color.rgb_to_rgba(src, 1.0), (w_pad, w_pad, h_pad, h_pad), "constant", 0.0)
 
 
 def draw_bbox_kpts(imgs, bboxes, keypoints):
@@ -79,9 +80,9 @@ def draw_bbox_kpts(imgs, bboxes, keypoints):
 def main():
     # Download the tutorial examples for the main docs
     URLS_TUTORIALS_EXAMPLES = {
-        'image_classifier.py': 'scripts/training/image_classifier/main.py',
-        'object_detection.py': 'scripts/training/object_detection/main.py',
-        'semantic_segmentation.py': 'scripts/training/semantic_segmentation/main.py',
+        "image_classifier.py": "scripts/training/image_classifier/main.py",
+        "object_detection.py": "scripts/training/object_detection/main.py",
+        "semantic_segmentation.py": "scripts/training/semantic_segmentation/main.py",
     }
 
     OUTPUT_PATH_SCRIPTS = Path(__file__).absolute().parent / "source/_static/scripts/"
@@ -97,11 +98,12 @@ def main():
     BASE_IMAGE_URL4: str = "https://raw.githubusercontent.com/kornia/data/main/baby_giraffe.png"  # morphology
     BASE_IMAGE_URL5: str = "https://raw.githubusercontent.com/kornia/data/main/persistencia_memoria.jpg"  # filters
     BASE_IMAGE_URL6: str = "https://raw.githubusercontent.com/kornia/data/main/delorean.png"  # geometry
-    hash1 = '8b98f44abbe92b7a84631ed06613b08fee7dae14'
+    hash1 = "8b98f44abbe92b7a84631ed06613b08fee7dae14"
     BASE_IMAGEOUTDOOR_URL7: str = f"https://github.com/kornia/data_test/raw/{hash1}/knchurch_disk.pt"  # image matching
-    BASE_IMAGEOUTDOOR_URL8: str = (
-        "https://github.com/kornia/data/raw/main/kornia_banner_pixie.png"  # Response functions
+    BASE_IMAGEOUTDOOR_URL8: str = (  # Response functions
+        "https://github.com/kornia/data/raw/main/kornia_banner_pixie.png"
     )
+    MASK_IMAGE_URL2: str = "https://raw.githubusercontent.com/kornia/data/main/simba_mask.png"
 
     OUTPUT_PATH = Path(__file__).absolute().parent / "source/_static/img"
 
@@ -114,6 +116,10 @@ def main():
     img5 = read_img_from_url(BASE_IMAGE_URL5, (234, 320))
     img6 = read_img_from_url(BASE_IMAGE_URL6)
     img_kornia = read_img_from_url(BASE_IMAGEOUTDOOR_URL8)
+
+    # Read the masks as (B, H, W)
+    mask2 = read_img_from_url(MASK_IMAGE_URL2, img1.shape[-2:], interpolation="nearest")
+    mask2 = mask2.median(dim=1)[0]
 
     # TODO: make this more generic for modules out of kornia.augmentation
     # Dictionary containing the transforms to generate the sample images:
@@ -214,16 +220,37 @@ def main():
         sig = f"{aug_name}({', '.join([str(a) for a in args])}, p=1.0)"
         print(f"Generated image example for {aug_name}. {sig}")
 
+    mask_augmentations_list = {"RandomTransplantation": (([0],), 0)}
+    # ITERATE OVER THE TRANSFORMS
+    for aug_name, (args, seed) in mask_augmentations_list.items():
+        img_in = torch.cat([img1, img2])
+        mask_in = torch.cat([torch.zeros_like(mask2), mask2])
+
+        # dynamically create the class instance
+        cls = getattr(mod, aug_name)
+        aug = cls(*args, p=1.0)
+        # set seed
+        torch.manual_seed(seed)
+        # apply the augmentation to the image and concat
+        img_aug, _ = aug(img_in, mask_in)
+
+        output = torch.cat([img_in[0], img_in[1], img_aug[0]], dim=-1)
+        # save the output image
+        out_np = K.utils.tensor_to_image((output * 255.0).byte())
+        cv2.imwrite(str(OUTPUT_PATH / f"{aug_name}.png"), out_np)
+        sig = f"{aug_name}({', '.join([str(a) for a in args])}, p=1.0)"
+        print(f"Generated image example for {aug_name}. {sig}")
+
     # Containers
     aug_container_list = {
-        'AugmentationSequential': (
+        "AugmentationSequential": (
             {
-                'args': (
+                "args": (
                     K.augmentation.ColorJitter(0.1, 0.1, 0.1, 0.1, p=1.0),
                     K.augmentation.RandomAffine(360, [0.1, 0.1], [0.7, 1.2], [30.0, 50.0], p=1.0),
                     K.augmentation.RandomPerspective(0.5, p=1.0),
                 ),
-                'data_keys': ["input", "bbox_xywh", "keypoints"],
+                "data_keys": ["input", "bbox_xywh", "keypoints"],
             },
             (
                 torch.tensor([[[125, 5, 115, 80]]], dtype=torch.float32),  # bbox
@@ -232,17 +259,17 @@ def main():
             2,
             2023,
         ),
-        'PatchSequential': (
+        "PatchSequential": (
             {
-                'args': (
+                "args": (
                     K.augmentation.ColorJitter(0.2, 0.1, 0.1, 0.1, p=1),
                     K.augmentation.RandomAffine(10, [0.1, 0.2], [0.7, 1.2], [0.0, 15.0], p=1),
                     K.augmentation.RandomPerspective(0.3, p=1),
                     K.augmentation.RandomSolarize(0.01, 0.05, p=0.6),
                 ),
-                'grid_size': (2, 2),
-                'same_on_batch': False,
-                'patchwise_apply': False,
+                "grid_size": (2, 2),
+                "same_on_batch": False,
+                "patchwise_apply": False,
             },
             (),
             2,
@@ -252,12 +279,12 @@ def main():
     for aug_name, (args, labels, num_samples, seed) in aug_container_list.items():
         img_in = img1.repeat(num_samples, 1, 1, 1)
         cls = getattr(mod, aug_name)
-        tfms = args.pop('args')
+        tfms = args.pop("args")
         augs = cls(*tfms, **args)
 
         # set seed
         torch.manual_seed(seed)
-        if aug_name == 'PatchSequential':
+        if aug_name == "PatchSequential":
             out = augs(img_in)
             inp = img_in
         else:
@@ -476,8 +503,8 @@ def main():
         "remap": (
             (
                 *(K.utils.create_meshgrid(h, w, normalized_coordinates=True) - 0.25).unbind(-1),
-                'bilinear',
-                'zeros',
+                "bilinear",
+                "zeros",
                 True,
                 True,
             ),
@@ -538,17 +565,17 @@ def main():
         print(f"Generated image example for {fn_name}. {sig}")
 
     # Image Matching and local features
-    img_matching_data = torch.hub.load_state_dict_from_url(BASE_IMAGEOUTDOOR_URL7, map_location=torch.device('cpu'))
-    img_outdoor = img_matching_data['img2']
+    img_matching_data = torch.hub.load_state_dict_from_url(BASE_IMAGEOUTDOOR_URL7, map_location=torch.device("cpu"))
+    img_outdoor = img_matching_data["img2"]
     print("Generating local feature detections ")
-    disk = K.feature.DISK.from_pretrained('depth')
+    disk = K.feature.DISK.from_pretrained("depth")
     with torch.no_grad():
         disk_feat = disk(img_outdoor)[0]
         xy = disk_feat.keypoints.detach().cpu().numpy()
         cur_fname = str(OUTPUT_PATH / "disk_outdoor_depth.jpg")
         plt.figure()
         plt.imshow(K.tensor_to_image(img_outdoor))
-        plt.scatter(xy[:, 0], xy[:, 1], 3, color='lime')
+        plt.scatter(xy[:, 0], xy[:, 1], 3, color="lime")
         plt.title('DISK("depth") keypoints')
         plt.savefig(cur_fname)
         plt.close()
@@ -556,8 +583,8 @@ def main():
     kah = K.feature.KeyNetAffNetHardNet(512).eval()
     with torch.no_grad():
         lafs, resps, descs = kah(K.color.rgb_to_grayscale(img_outdoor))
-        fig1, ax = visualize_LAF(img_outdoor, lafs, color='lime', return_fig_ax=True, draw_ori=False)
-        ax.set_title('KeyNetAffNet 512 LAFs')
+        fig1, ax = visualize_LAF(img_outdoor, lafs, color="lime", return_fig_ax=True, draw_ori=False)
+        ax.set_title("KeyNetAffNet 512 LAFs")
         cur_fname = str(OUTPUT_PATH / "keynet_affnet.jpg")
         fig1.savefig(cur_fname)
         plt.close()
@@ -569,8 +596,8 @@ def main():
         cur_fname = str(OUTPUT_PATH / "keynet.jpg")
         plt.figure()
         plt.imshow(K.tensor_to_image(img_outdoor))
-        plt.scatter(xy[:, 0], xy[:, 1], 3, color='lime')
-        plt.title('KeyNet 512 keypoints')
+        plt.scatter(xy[:, 0], xy[:, 1], 3, color="lime")
+        plt.title("KeyNet 512 keypoints")
         plt.savefig(cur_fname)
         plt.close()
 
@@ -582,11 +609,11 @@ def main():
         # import function and apply
         # import pdb;pdb.set_trace()
         img_in = K.color.rgb_to_grayscale(img_kornia)
-        if fn_name == 'KeyNet':
+        if fn_name == "KeyNet":
             fn = K.feature.KeyNet(True)
             out = fn(img_in)
-        elif fn_name == 'DISK':
-            fn = K.feature.DISK.from_pretrained('depth')
+        elif fn_name == "DISK":
+            fn = K.feature.DISK.from_pretrained("depth")
             h, w = img_outdoor.shape[2:]
             pd_h = 32 - h % 32 if h % 32 > 0 else 0
             pd_w = 32 - w % 32 if w % 32 > 0 else 0

@@ -49,17 +49,14 @@ class PinholeCamera:
     def _check_valid_params(data: Tensor, data_name: str) -> bool:
         if len(data.shape) not in (3, 4) and data.shape[-2:] != (4, 4):  # Shouldn't this be an OR logic than AND?
             raise ValueError(
-                "Argument {} shape must be in the following shape"
-                " Bx4x4 or BxNx4x4. Got {}".format(data_name, data.shape)
+                f"Argument {data_name} shape must be in the following shape Bx4x4 or BxNx4x4. Got {data.shape}"
             )
         return True
 
     @staticmethod
     def _check_valid_shape(data: Tensor, data_name: str) -> bool:
         if not len(data.shape) == 1:
-            raise ValueError(
-                "Argument {} shape must be in the following shape" " B. Got {}".format(data_name, data.shape)
-            )
+            raise ValueError(f"Argument {data_name} shape must be in the following shape B. Got {data.shape}")
         return True
 
     @staticmethod
@@ -153,7 +150,7 @@ class PinholeCamera:
         return self.extrinsics[..., 0, -1]
 
     @tx.setter
-    def tx(self, value: Union[Tensor, float, int]) -> 'PinholeCamera':
+    def tx(self, value: Union[Tensor, float]) -> "PinholeCamera":
         r"""Set the x-coordinate of the translation vector with the given value."""
         self.extrinsics[..., 0, -1] = value
         return self
@@ -168,7 +165,7 @@ class PinholeCamera:
         return self.extrinsics[..., 1, -1]
 
     @ty.setter
-    def ty(self, value: Union[Tensor, float, int]) -> 'PinholeCamera':
+    def ty(self, value: Union[Tensor, float]) -> "PinholeCamera":
         r"""Set the y-coordinate of the translation vector with the given value."""
         self.extrinsics[..., 1, -1] = value
         return self
@@ -183,7 +180,7 @@ class PinholeCamera:
         return self.extrinsics[..., 2, -1]
 
     @tz.setter
-    def tz(self, value: Union[Tensor, float, int]) -> 'PinholeCamera':
+    def tz(self, value: Union[Tensor, float]) -> "PinholeCamera":
         r"""Set the y-coordinate of the translation vector with the given value."""
         self.extrinsics[..., 2, -1] = value
         return self
@@ -224,7 +221,7 @@ class PinholeCamera:
         """
         return self.extrinsics[..., :3, -1:]
 
-    def clone(self) -> 'PinholeCamera':
+    def clone(self) -> "PinholeCamera":
         r"""Return a deep copy of the current object instance."""
         height: Tensor = self.height.clone()
         width: Tensor = self.width.clone()
@@ -240,7 +237,7 @@ class PinholeCamera:
         """
         return self.intrinsics.inverse()
 
-    def scale(self, scale_factor: Tensor) -> 'PinholeCamera':
+    def scale(self, scale_factor: Tensor) -> "PinholeCamera":
         r"""Scale the pinhole model.
 
         Args:
@@ -262,7 +259,7 @@ class PinholeCamera:
         width: Tensor = scale_factor * self.width.clone()
         return PinholeCamera(intrinsics, self.extrinsics, height, width)
 
-    def scale_(self, scale_factor: Union[float, int, Tensor]) -> 'PinholeCamera':
+    def scale_(self, scale_factor: Union[float, Tensor]) -> "PinholeCamera":
         r"""Scale the pinhole model in-place.
 
         Args:
@@ -356,7 +353,7 @@ class PinholeCamera:
         batch_size: int,
         device: Device,
         dtype: torch.dtype,
-    ) -> 'PinholeCamera':
+    ) -> "PinholeCamera":
         # create the camera matrix
         intrinsics = torch.zeros(batch_size, 4, 4, device=device, dtype=dtype)
         intrinsics[..., 0, 0] += fx
@@ -397,7 +394,7 @@ class PinholeCamerasList(PinholeCamera):
     def __init__(self, pinholes_list: Iterable[PinholeCamera]) -> None:
         self._initialize_parameters(pinholes_list)
 
-    def _initialize_parameters(self, pinholes: Iterable[PinholeCamera]) -> 'PinholeCamerasList':
+    def _initialize_parameters(self, pinholes: Iterable[PinholeCamera]) -> "PinholeCamerasList":
         r"""Initialise the class attributes given a cameras list."""
         if not isinstance(pinholes, (list, tuple)):
             raise TypeError(f"pinhole must of type list or tuple. Got {type(pinholes)}")
@@ -405,12 +402,12 @@ class PinholeCamerasList(PinholeCamera):
         intrinsics, extrinsics = [], []
         for pinhole in pinholes:
             if not isinstance(pinhole, PinholeCamera):
-                raise TypeError("Argument pinhole must be from type " "PinholeCamera. Got {}".format(type(pinhole)))
+                raise TypeError(f"Argument pinhole must be from type PinholeCamera. Got {type(pinhole)}")
             height.append(pinhole.height)
             width.append(pinhole.width)
             intrinsics.append(pinhole.intrinsics)
             extrinsics.append(pinhole.extrinsics)
-        # contatenate and set members. We will assume BxNx4x4
+        # concatenate and set members. We will assume BxNx4x4
         self.height: Tensor = torch.stack(height, dim=1)
         self.width: Tensor = torch.stack(width, dim=1)
         self._intrinsics: Tensor = torch.stack(intrinsics, dim=1)
@@ -644,11 +641,11 @@ def pixel2cam(depth: Tensor, intrinsics_inv: Tensor, pixel_coords: Tensor) -> Te
         tensor of shape BxHxWx3 with (x, y, z) cam coordinates.
     """
     if not len(depth.shape) == 4 and depth.shape[1] == 1:
-        raise ValueError("Input depth has to be in the shape of " "Bx1xHxW. Got {}".format(depth.shape))
+        raise ValueError(f"Input depth has to be in the shape of Bx1xHxW. Got {depth.shape}")
     if not len(intrinsics_inv.shape) == 3:
-        raise ValueError("Input intrinsics_inv has to be in the shape of " "Bx4x4. Got {}".format(intrinsics_inv.shape))
+        raise ValueError(f"Input intrinsics_inv has to be in the shape of Bx4x4. Got {intrinsics_inv.shape}")
     if not len(pixel_coords.shape) == 4 and pixel_coords.shape[3] == 3:
-        raise ValueError("Input pixel_coords has to be in the shape of " "BxHxWx3. Got {}".format(intrinsics_inv.shape))
+        raise ValueError(f"Input pixel_coords has to be in the shape of BxHxWx3. Got {intrinsics_inv.shape}")
     cam_coords: Tensor = transform_points(intrinsics_inv[:, None], pixel_coords)
     return cam_coords * depth.permute(0, 2, 3, 1)
 
@@ -670,11 +667,9 @@ def cam2pixel(cam_coords_src: Tensor, dst_proj_src: Tensor, eps: float = 1e-12) 
         tensor of shape BxHxWx2 with (u, v) pixel coordinates.
     """
     if not len(cam_coords_src.shape) == 4 and cam_coords_src.shape[3] == 3:
-        raise ValueError(
-            "Input cam_coords_src has to be in the shape of " "BxHxWx3. Got {}".format(cam_coords_src.shape)
-        )
+        raise ValueError(f"Input cam_coords_src has to be in the shape of BxHxWx3. Got {cam_coords_src.shape}")
     if not len(dst_proj_src.shape) == 3 and dst_proj_src.shape[-2:] == (4, 4):
-        raise ValueError("Input dst_proj_src has to be in the shape of " "Bx4x4. Got {}".format(dst_proj_src.shape))
+        raise ValueError(f"Input dst_proj_src has to be in the shape of Bx4x4. Got {dst_proj_src.shape}")
     # apply projection matrix to points
     point_coords: Tensor = transform_points(dst_proj_src[:, None], cam_coords_src)
     x_coord: Tensor = point_coords[..., 0]

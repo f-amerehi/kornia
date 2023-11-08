@@ -11,7 +11,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import torch
 
@@ -55,14 +55,14 @@ class SamConfig:
         encoder_global_attn_indexes: Encoder indexes for blocks using global attention.
     """
 
-    model_type: str | int | SamModelType | None = None
-    checkpoint: str | None = None
+    model_type: Optional[str | int | SamModelType] = None
+    checkpoint: Optional[str] = None
     pretrained: bool = False
 
-    encoder_embed_dim: int | None = None
-    encoder_depth: int | None = None
-    encoder_num_heads: int | None = None
-    encoder_global_attn_indexes: tuple[int, ...] | None = None
+    encoder_embed_dim: Optional[int] = None
+    encoder_depth: Optional[int] = None
+    encoder_num_heads: Optional[int] = None
+    encoder_global_attn_indexes: Optional[tuple[int, ...]] = None
 
 
 class Sam(ModelBase[SamConfig]):
@@ -105,10 +105,10 @@ class Sam(ModelBase[SamConfig]):
             model_type = SamModelType(model_type)
         elif isinstance(model_type, str):
             _map_sam_type = {
-                'vit_h': SamModelType.vit_h,
-                'vit_l': SamModelType.vit_l,
-                'vit_b': SamModelType.vit_b,
-                'mobile_sam': SamModelType.mobile_sam,
+                "vit_h": SamModelType.vit_h,
+                "vit_l": SamModelType.vit_l,
+                "vit_b": SamModelType.vit_b,
+                "mobile_sam": SamModelType.mobile_sam,
             }
             model_type = _map_sam_type[model_type]
 
@@ -173,7 +173,7 @@ class Sam(ModelBase[SamConfig]):
             )
 
         else:
-            raise NotImplementedError('Unexpected config. The model_type should be provide or the encoder configs.')
+            raise NotImplementedError("Unexpected config. The model_type should be provide or the encoder configs.")
 
         checkpoint = config.checkpoint
         if config.pretrained:
@@ -236,10 +236,10 @@ class Sam(ModelBase[SamConfig]):
                 - scores: The model's predictions of mask quality (iou prediction), in shape BxC.
         """
 
-        KORNIA_CHECK_SHAPE(images, ['B', '3', 'H', 'W'])
+        KORNIA_CHECK_SHAPE(images, ["B", "3", "H", "W"])
         KORNIA_CHECK(
             images.shape[0] == len(batched_prompts),
-            'The number of images (`B`) should match with the length of prompts!',
+            "The number of images (`B`) should match with the length of prompts!",
         )
 
         image_embeddings = self.image_encoder(images)

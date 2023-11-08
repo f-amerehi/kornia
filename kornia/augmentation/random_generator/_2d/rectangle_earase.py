@@ -1,9 +1,8 @@
 from typing import Dict, Tuple, Union
 
 import torch
-from torch.distributions import Uniform
 
-from kornia.augmentation.random_generator.base import RandomGeneratorBase
+from kornia.augmentation.random_generator.base import RandomGeneratorBase, UniformDistribution
 from kornia.augmentation.utils import _adapted_rsampling, _common_param_check, _joint_range_check
 from kornia.core import Tensor, as_tensor, tensor, where
 from kornia.utils.helpers import _extract_device_dtype
@@ -54,20 +53,20 @@ class RectangleEraseGenerator(RandomGeneratorBase):
 
         if not (isinstance(self.value, (int, float)) and self.value >= 0 and self.value <= 1):
             raise AssertionError(f"'value' must be a number between 0 - 1. Got {self.value}.")
-        _joint_range_check(scale, 'scale', bounds=(0, float('inf')))
-        _joint_range_check(ratio, 'ratio', bounds=(0, float('inf')))
+        _joint_range_check(scale, "scale", bounds=(0, float("inf")))
+        _joint_range_check(ratio, "ratio", bounds=(0, float("inf")))
 
-        self.scale_sampler = Uniform(scale[0], scale[1], validate_args=False)
+        self.scale_sampler = UniformDistribution(scale[0], scale[1], validate_args=False)
 
         if ratio[0] < 1.0 and ratio[1] > 1.0:
-            self.ratio_sampler1 = Uniform(ratio[0], 1, validate_args=False)
-            self.ratio_sampler2 = Uniform(1, ratio[1], validate_args=False)
-            self.index_sampler = Uniform(
+            self.ratio_sampler1 = UniformDistribution(ratio[0], 1, validate_args=False)
+            self.ratio_sampler2 = UniformDistribution(1, ratio[1], validate_args=False)
+            self.index_sampler = UniformDistribution(
                 tensor(0, device=device, dtype=dtype), tensor(1, device=device, dtype=dtype), validate_args=False
             )
         else:
-            self.ratio_sampler = Uniform(ratio[0], ratio[1], validate_args=False)
-        self.uniform_sampler = Uniform(
+            self.ratio_sampler = UniformDistribution(ratio[0], ratio[1], validate_args=False)
+        self.uniform_sampler = UniformDistribution(
             tensor(0, device=device, dtype=dtype), tensor(1, device=device, dtype=dtype), validate_args=False
         )
 
@@ -75,7 +74,7 @@ class RectangleEraseGenerator(RandomGeneratorBase):
         batch_size = batch_shape[0]
         height = batch_shape[-2]
         width = batch_shape[-1]
-        if not (type(height) is int and height > 0 and type(width) is int and width > 0):
+        if not (isinstance(height, int) and height > 0 and isinstance(width, int) and width > 0):
             raise AssertionError(f"'height' and 'width' must be integers. Got {height}, {width}.")
 
         _common_param_check(batch_size, same_on_batch)

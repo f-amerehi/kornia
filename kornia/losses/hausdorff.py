@@ -30,7 +30,7 @@ class _HausdorffERLossBase(Module):
     conv: Callable[..., Tensor]
     max_pool: Callable[..., Tensor]
 
-    def __init__(self, alpha: float = 2.0, k: int = 10, reduction: str = 'mean') -> None:
+    def __init__(self, alpha: float = 2.0, k: int = 10, reduction: str = "mean") -> None:
         super().__init__()
         self.alpha = alpha
         self.k = k
@@ -110,11 +110,11 @@ class _HausdorffERLossBase(Module):
             ]
         )
 
-        if self.reduction == 'mean':
+        if self.reduction == "mean":
             out = out.mean()
-        elif self.reduction == 'sum':
+        elif self.reduction == "sum":
             out = out.sum()
-        elif self.reduction == 'none':
+        elif self.reduction == "none":
             pass
         else:
             raise NotImplementedError(f"reduction `{self.reduction}` has not been implemented yet.")
@@ -183,7 +183,7 @@ class HausdorffERLoss(_HausdorffERLossBase):
 
         if not (target.max() < pred.size(1) and target.min() >= 0 and target.dtype == torch.long):
             raise ValueError(
-                f"Expect long type target value in range (0, {pred.size(1)})." f"({target.min()}, {target.max()})"
+                f"Expect long type target value in range (0, {pred.size(1)}). ({target.min()}, {target.max()})"
             )
         return super().forward(pred, target)
 

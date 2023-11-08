@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn.functional as F
-from torch.nn.functional import grid_sample
 
 from kornia.core import Tensor, concatenate, stack, tensor, zeros
 from kornia.core.check import KORNIA_CHECK, KORNIA_CHECK_SHAPE
@@ -48,14 +49,12 @@ def warp_perspective(
     src: Tensor,
     M: Tensor,
     dsize: tuple[int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
     fill_value: Tensor = zeros(3),  # needed for jit
 ) -> Tensor:
     r"""Apply a perspective transformation to an image.
-
-    .. image:: https://kornia-tutorials.readthedocs.io/en/latest/_images/warp_perspective_10_1.png
 
     The function warp_perspective transforms the source image using
     the specified matrix:
@@ -89,8 +88,7 @@ def warp_perspective(
         This function is often used in conjunction with :func:`get_perspective_transform`.
 
     .. note::
-        See a working example `here <https://kornia-tutorials.readthedocs.io/en/
-        latest/warp_perspective.html>`_.
+        See a working example `here <https://kornia.github.io/tutorials/nbs/warp_perspective.html>`_.
     """
     if not isinstance(src, Tensor):
         raise TypeError(f"Input src type is not a Tensor. Got {type(src)}")
@@ -134,8 +132,8 @@ def warp_affine(
     src: Tensor,
     M: Tensor,
     dsize: tuple[int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
     fill_value: Tensor = zeros(3),  # needed for jit
 ) -> Tensor:
@@ -167,8 +165,7 @@ def warp_affine(
         :func:`get_shear_matrix2d`, :func:`get_affine_matrix2d`, :func:`invert_affine_transform`.
 
     .. note::
-       See a working example `here <https://kornia-tutorials.readthedocs.io/en/latest/
-       rotate_affine.html>`__.
+       See a working example `here <https://kornia.github.io/tutorials/nbs/rotate_affine.html>`__.
 
     Example:
        >>> img = torch.rand(1, 4, 5, 6)
@@ -189,11 +186,6 @@ def warp_affine(
     if not (len(M.shape) == 3 or M.shape[-2:] == (2, 3)):
         raise ValueError(f"Input M must be a Bx2x3 tensor. Got {M.shape}")
 
-    # fill padding is only supported for 3 channels because we can't set fill_value default
-    # to None as this gives jit issues.
-    if padding_mode == "fill" and fill_value.shape != torch.Size([3]):
-        raise ValueError(f"Padding_tensor only supported for 3 channels. Got {fill_value.shape}")
-
     B, C, H, W = src.size()
 
     # we generate a 3x3 transformation matrix from 2x3 affine
@@ -207,6 +199,7 @@ def warp_affine(
 
     if padding_mode == "fill":
         return _fill_and_warp(src, grid, align_corners=align_corners, mode=mode, fill_value=fill_value)
+
     return F.grid_sample(src, grid, align_corners=align_corners, mode=mode, padding_mode=padding_mode)
 
 
@@ -466,9 +459,9 @@ def remap(
     image: Tensor,
     map_x: Tensor,
     map_y: Tensor,
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
-    align_corners: bool | None = None,
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
+    align_corners: Optional[bool] = None,
     normalized_coordinates: bool = False,
 ) -> Tensor:
     r"""Apply a generic geometrical transformation to an image tensor.
@@ -528,7 +521,7 @@ def remap(
     map_xy = map_xy.expand(batch_size, -1, -1, -1)
 
     # warp the image tensor and return
-    return grid_sample(image, map_xy, mode=mode, padding_mode=padding_mode, align_corners=align_corners)
+    return F.grid_sample(image, map_xy, mode=mode, padding_mode=padding_mode, align_corners=align_corners)
 
 
 def invert_affine_transform(matrix: Tensor) -> Tensor:
@@ -572,8 +565,8 @@ def get_affine_matrix2d(
     center: Tensor,
     scale: Tensor,
     angle: Tensor,
-    sx: Tensor | None = None,
-    sy: Tensor | None = None,
+    sx: Optional[Tensor] = None,
+    sy: Optional[Tensor] = None,
 ) -> Tensor:
     r"""Compose affine matrix from the components.
 
@@ -625,7 +618,7 @@ def get_translation_matrix2d(translations: Tensor) -> Tensor:
     return transform_h
 
 
-def get_shear_matrix2d(center: Tensor, sx: Tensor | None = None, sy: Tensor | None = None) -> Tensor:
+def get_shear_matrix2d(center: Tensor, sx: Optional[Tensor] = None, sy: Optional[Tensor] = None) -> Tensor:
     r"""Compose shear matrix Bx4x4 from the components.
 
     Note: Ordered shearing, shear x-axis then y-axis.
@@ -638,8 +631,8 @@ def get_shear_matrix2d(center: Tensor, sx: Tensor | None = None, sy: Tensor | No
 
     Args:
         center: shearing center coordinates of (x, y).
-        sx: shearing degree along x axis.
-        sy: shearing degree along y axis.
+        sx: shearing angle along x axis in radiants.
+        sy: shearing angle along y axis in radiants
 
     Returns:
         params to be passed to the affine transformation with shape :math:`(B, 3, 3)`.
@@ -667,9 +660,9 @@ def get_shear_matrix2d(center: Tensor, sx: Tensor | None = None, sy: Tensor | No
     sx_tan = torch.tan(sx)
     sy_tan = torch.tan(sy)
     ones = torch.ones_like(sx)
-    shear_mat = stack([ones, -sx_tan, sx_tan * y, -sy_tan, ones + sx_tan * sy_tan, sy_tan * (sx_tan * y + x)], -1).view(
-        -1, 2, 3
-    )
+    shear_mat = stack(
+        [ones, -sx_tan, sx_tan * y, -sy_tan, ones + sx_tan * sy_tan, sy_tan * (x - sx_tan * y)], dim=-1
+    ).view(-1, 2, 3)
 
     shear_mat = convert_affinematrix_to_homography(shear_mat)
     return shear_mat
@@ -680,12 +673,12 @@ def get_affine_matrix3d(
     center: Tensor,
     scale: Tensor,
     angles: Tensor,
-    sxy: Tensor | None = None,
-    sxz: Tensor | None = None,
-    syx: Tensor | None = None,
-    syz: Tensor | None = None,
-    szx: Tensor | None = None,
-    szy: Tensor | None = None,
+    sxy: Optional[Tensor] = None,
+    sxz: Optional[Tensor] = None,
+    syx: Optional[Tensor] = None,
+    syz: Optional[Tensor] = None,
+    szx: Optional[Tensor] = None,
+    szy: Optional[Tensor] = None,
 ) -> Tensor:
     r"""Compose 3d affine matrix from the components.
 
@@ -723,12 +716,12 @@ def get_affine_matrix3d(
 
 def get_shear_matrix3d(
     center: Tensor,
-    sxy: Tensor | None = None,
-    sxz: Tensor | None = None,
-    syx: Tensor | None = None,
-    syz: Tensor | None = None,
-    szx: Tensor | None = None,
-    szy: Tensor | None = None,
+    sxy: Optional[Tensor] = None,
+    sxz: Optional[Tensor] = None,
+    syx: Optional[Tensor] = None,
+    syz: Optional[Tensor] = None,
+    szx: Optional[Tensor] = None,
+    szy: Optional[Tensor] = None,
 ) -> Tensor:
     r"""Compose shear matrix Bx4x4 from the components.
     Note: Ordered shearing, shear x-axis then y-axis then z-axis.
@@ -752,12 +745,12 @@ def get_shear_matrix3d(
 
     Params:
         center: shearing center coordinates of (x, y, z).
-        sxy: shearing degree along x axis, towards y plane.
-        sxz: shearing degree along x axis, towards z plane.
-        syx: shearing degree along y axis, towards x plane.
-        syz: shearing degree along y axis, towards z plane.
-        szx: shearing degree along z axis, towards x plane.
-        szy: shearing degree along z axis, towards y plane.
+        sxy: shearing angle along x axis, towards y plane in radiants.
+        sxz: shearing angle along x axis, towards z plane in radiants.
+        syx: shearing angle along y axis, towards x plane in radiants.
+        syz: shearing angle along y axis, towards z plane in radiants.
+        szx: shearing angle along z axis, towards x plane in radiants.
+        szy: shearing angle along z axis, towards y plane in radiants.
 
     Returns:
         params to be passed to the affine transformation.
@@ -832,8 +825,8 @@ def warp_affine3d(
     src: Tensor,
     M: Tensor,
     dsize: tuple[int, int, int],
-    flags: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    flags: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = True,
 ) -> Tensor:
     r"""Apply a projective transformation a to 3d tensor.
@@ -879,7 +872,7 @@ def warp_affine3d(
     # compute meshgrid and apply to input
     dsize_out: list[int] = [B, C, *list(size_out)]
     grid = F.affine_grid(P_norm, dsize_out, align_corners=align_corners)
-    return grid_sample(src, grid, align_corners=align_corners, mode=flags, padding_mode=padding_mode)
+    return F.grid_sample(src, grid, align_corners=align_corners, mode=flags, padding_mode=padding_mode)
 
 
 def projection_from_Rt(rmat: Tensor, tvec: Tensor) -> Tensor:
@@ -1056,9 +1049,9 @@ def get_perspective_transform3d(src: Tensor, dst: Tensor) -> Tensor:
 
     # 000, 100, 110, 101, 011
     for i in [0, 1, 2, 5, 7]:
-        p.append(_build_perspective_param3d(src[:, i], dst[:, i], 'x'))
-        p.append(_build_perspective_param3d(src[:, i], dst[:, i], 'y'))
-        p.append(_build_perspective_param3d(src[:, i], dst[:, i], 'z'))
+        p.append(_build_perspective_param3d(src[:, i], dst[:, i], "x"))
+        p.append(_build_perspective_param3d(src[:, i], dst[:, i], "y"))
+        p.append(_build_perspective_param3d(src[:, i], dst[:, i], "z"))
 
     # A is Bx15x15
     A = stack(p, 1)
@@ -1104,7 +1097,7 @@ def _build_perspective_param3d(p: Tensor, q: Tensor, axis: str) -> Tensor:
     ones = torch.ones_like(p)[..., 0:1]
     zeros = torch.zeros_like(p)[..., 0:1]
 
-    if axis == 'x':
+    if axis == "x":
         return concatenate(
             [
                 p[:, 0:1],
@@ -1126,7 +1119,7 @@ def _build_perspective_param3d(p: Tensor, q: Tensor, axis: str) -> Tensor:
             1,
         )
 
-    if axis == 'y':
+    if axis == "y":
         return concatenate(
             [
                 zeros,
@@ -1148,7 +1141,7 @@ def _build_perspective_param3d(p: Tensor, q: Tensor, axis: str) -> Tensor:
             1,
         )
 
-    if axis == 'z':
+    if axis == "z":
         return concatenate(
             [
                 zeros,
@@ -1177,8 +1170,8 @@ def warp_perspective3d(
     src: Tensor,
     M: Tensor,
     dsize: tuple[int, int, int],
-    flags: str = 'bilinear',
-    border_mode: str = 'zeros',
+    flags: str = "bilinear",
+    border_mode: str = "zeros",
     align_corners: bool = False,
 ) -> Tensor:
     r"""Apply a perspective transformation to an image.
@@ -1229,8 +1222,8 @@ def homography_warp(
     patch_src: Tensor,
     src_homo_dst: Tensor,
     dsize: tuple[int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = False,
     normalized_coordinates: bool = True,
     normalized_homography: bool = True,
@@ -1280,7 +1273,7 @@ def homography_warp(
 
         return F.grid_sample(patch_src, warped_grid, mode=mode, padding_mode=padding_mode, align_corners=align_corners)
     return warp_perspective(
-        patch_src, src_homo_dst, dsize, mode='bilinear', padding_mode=padding_mode, align_corners=True
+        patch_src, src_homo_dst, dsize, mode="bilinear", padding_mode=padding_mode, align_corners=True
     )
 
 
@@ -1304,8 +1297,8 @@ def homography_warp3d(
     patch_src: Tensor,
     src_homo_dst: Tensor,
     dsize: tuple[int, int, int],
-    mode: str = 'bilinear',
-    padding_mode: str = 'zeros',
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
     align_corners: bool = False,
     normalized_coordinates: bool = True,
 ) -> Tensor:

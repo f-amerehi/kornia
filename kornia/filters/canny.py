@@ -42,8 +42,7 @@ def canny(
         - the canny edge detection filtered by thresholds and hysteresis, shape of :math:`(B,1,H,W)`.
 
     .. note::
-       See a working example `here <https://kornia-tutorials.readthedocs.io/en/latest/
-       canny.html>`__.
+       See a working example `here <https://kornia.github.io/tutorials/nbs/canny.html>`__.
 
     Example:
         >>> input = torch.rand(5, 3, 4, 4)
@@ -54,14 +53,14 @@ def canny(
         torch.Size([5, 1, 4, 4])
     """
     KORNIA_CHECK_IS_TENSOR(input)
-    KORNIA_CHECK_SHAPE(input, ['B', 'C', 'H', 'W'])
+    KORNIA_CHECK_SHAPE(input, ["B", "C", "H", "W"])
     KORNIA_CHECK(
         low_threshold <= high_threshold,
         "Invalid input thresholds. low_threshold should be smaller than the high_threshold. Got: "
         f"{low_threshold}>{high_threshold}",
     )
-    KORNIA_CHECK(0 < low_threshold < 1, f'Invalid low threshold. Should be in range (0, 1). Got: {low_threshold}')
-    KORNIA_CHECK(0 < high_threshold < 1, f'Invalid high threshold. Should be in range (0, 1). Got: {high_threshold}')
+    KORNIA_CHECK(0 < low_threshold < 1, f"Invalid low threshold. Should be in range (0, 1). Got: {low_threshold}")
+    KORNIA_CHECK(0 < high_threshold < 1, f"Invalid high threshold. Should be in range (0, 1). Got: {high_threshold}")
 
     device = input.device
     dtype = input.dtype
@@ -187,9 +186,9 @@ class Canny(Module):
             "Invalid input thresholds. low_threshold should be smaller than the high_threshold. Got: "
             f"{low_threshold}>{high_threshold}",
         )
-        KORNIA_CHECK(0 < low_threshold < 1, f'Invalid low threshold. Should be in range (0, 1). Got: {low_threshold}')
+        KORNIA_CHECK(0 < low_threshold < 1, f"Invalid low threshold. Should be in range (0, 1). Got: {low_threshold}")
         KORNIA_CHECK(
-            0 < high_threshold < 1, f'Invalid high threshold. Should be in range (0, 1). Got: {high_threshold}'
+            0 < high_threshold < 1, f"Invalid high threshold. Should be in range (0, 1). Got: {high_threshold}"
         )
 
         # Gaussian blur parameters
@@ -206,13 +205,13 @@ class Canny(Module):
         self.eps: float = eps
 
     def __repr__(self) -> str:
-        return ''.join(
+        return "".join(
             (
-                f'{type(self).__name__}(',
-                ', '.join(
-                    f'{name}={getattr(self, name)}' for name in sorted(self.__dict__) if not name.startswith('_')
+                f"{type(self).__name__}(",
+                ", ".join(
+                    f"{name}={getattr(self, name)}" for name in sorted(self.__dict__) if not name.startswith("_")
                 ),
-                ')',
+                ")",
             )
         )
 

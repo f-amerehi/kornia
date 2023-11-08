@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Optional, cast
 
 import torch
 from torch import Size
@@ -192,7 +192,7 @@ class Boxes:
         raise_if_not_floating_point: bool = True,
         mode: str = "vertices_plus",
     ) -> None:
-        self._N: list[int] | None = None
+        self._N: Optional[list[int]] = None
 
         if isinstance(boxes, list):
             boxes, self._N = _merge_box_list(boxes)
@@ -312,8 +312,8 @@ class Boxes:
 
     def clamp(
         self,
-        topleft: Tensor | tuple[int, int] | None = None,
-        botright: Tensor | tuple[int, int] | None = None,
+        topleft: Optional[Tensor | tuple[int, int]] = None,
+        botright: Optional[Tensor | tuple[int, int]] = None,
         inplace: bool = False,
     ) -> Boxes:
         """"""
@@ -372,7 +372,7 @@ class Boxes:
         raise NotImplementedError
 
     def filter_boxes_by_area(
-        self, min_area: float | None = None, max_area: float | None = None, inplace: bool = False
+        self, min_area: Optional[float] = None, max_area: Optional[float] = None, inplace: bool = False
     ) -> Boxes:
         area = self.compute_area()
         if inplace:
@@ -449,7 +449,9 @@ class Boxes:
 
         return cls(quadrilaterals, False, mode)
 
-    def to_tensor(self, mode: str | None = None, as_padded_sequence: bool = False) -> torch.Tensor | list[torch.Tensor]:
+    def to_tensor(
+        self, mode: Optional[str] = None, as_padded_sequence: bool = False
+    ) -> torch.Tensor | list[torch.Tensor]:
         r"""Cast :class:`Boxes` to a tensor. ``mode`` controls which 2D boxes format should be use to represent
         boxes in the tensor.
 
@@ -508,7 +510,7 @@ class Boxes:
             offset = torch.as_tensor([0, 0, 1, 1], device=boxes.device, dtype=boxes.dtype)
             boxes = boxes + offset
 
-        if mode.startswith('vertices'):
+        if mode.startswith("vertices"):
             boxes = _boxes_to_polygons(boxes[..., 0], boxes[..., 1], boxes[..., 2], boxes[..., 3])
 
         if self._N is not None and not as_padded_sequence:
@@ -636,7 +638,7 @@ class Boxes:
         """Returns boxes dtype."""
         return self._data.dtype
 
-    def to(self, device: torch.device | None = None, dtype: torch.dtype | None = None) -> Boxes:
+    def to(self, device: Optional[torch.device] = None, dtype: Optional[torch.dtype] = None) -> Boxes:
         """Like :func:`torch.nn.Module.to()` method."""
         # In torchscript, dtype is a int and not a class. https://github.com/pytorch/pytorch/issues/51941
         if dtype is not None and not _is_floating_point_dtype(dtype):
@@ -677,7 +679,7 @@ class VideoBoxes(Boxes):
         out.temporal_channel_size = temporal_channel_size
         return out
 
-    def to_tensor(self, mode: str | None = None) -> torch.Tensor | list[torch.Tensor]:  # type: ignore[override]
+    def to_tensor(self, mode: Optional[str] = None) -> torch.Tensor | list[torch.Tensor]:  # type: ignore[override]
         out = super().to_tensor(mode, as_padded_sequence=False)
         if isinstance(out, Tensor):
             return out.view(-1, self.temporal_channel_size, *out.shape[1:])
@@ -759,7 +761,7 @@ class Boxes3D:
             >>> boxes3d.get_boxes_shape()
             (tensor([30., 60.]), tensor([20., 50.]), tensor([10., 40.]))
         """
-        boxes_xyzwhd = self.to_tensor(mode='xyzwhd')
+        boxes_xyzwhd = self.to_tensor(mode="xyzwhd")
         widths, heights, depths = boxes_xyzwhd[..., 3], boxes_xyzwhd[..., 4], boxes_xyzwhd[..., 5]
         return depths, heights, widths
 
@@ -908,7 +910,7 @@ class Boxes3D:
             offset = torch.as_tensor([0, 0, 0, 1, 1, 1], device=boxes.device, dtype=boxes.dtype)
             boxes = boxes + offset
 
-        if mode.startswith('vertices'):
+        if mode.startswith("vertices"):
             xmin, ymin, zmin = boxes[..., 0], boxes[..., 1], boxes[..., 2]
             width, height, depth = boxes[..., 3], boxes[..., 4], boxes[..., 5]
 
@@ -1044,7 +1046,7 @@ class Boxes3D:
         """Returns boxes dtype."""
         return self._data.dtype
 
-    def to(self, device: torch.device | None = None, dtype: torch.dtype | None = None) -> Boxes3D:
+    def to(self, device: Optional[torch.device] = None, dtype: Optional[torch.dtype] = None) -> Boxes3D:
         """Like :func:`torch.nn.Module.to()` method."""
         # In torchscript, dtype is a int and not a class. https://github.com/pytorch/pytorch/issues/51941
         if dtype is not None and not _is_floating_point_dtype(dtype):

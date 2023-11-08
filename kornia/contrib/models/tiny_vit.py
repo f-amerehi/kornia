@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import Any
+from typing import Any, Optional
 
 import torch
 import torch.nn.functional as F
@@ -98,7 +98,7 @@ class ConvLayer(Module):
         depth: int,
         activation: type[Module] = nn.GELU,
         drop_path: float | list[float] = 0.0,
-        downsample: Module | None = None,
+        downsample: Optional[Module] = None,
         use_checkpoint: bool = False,
         conv_expand_ratio: float = 4.0,
     ) -> None:
@@ -169,9 +169,9 @@ class Attention(Module):
 
         indices, attn_offset_size = self.build_attention_bias(resolution)
         self.attention_biases = nn.Parameter(torch.zeros(num_heads, attn_offset_size))
-        self.register_buffer('attention_bias_idxs', indices, persistent=False)
+        self.register_buffer("attention_bias_idxs", indices, persistent=False)
         self.attention_bias_idxs: Tensor
-        self.ab: Tensor | None = None
+        self.ab: Optional[Tensor] = None
 
     @staticmethod
     def build_attention_bias(resolution: tuple[int, int]) -> tuple[Tensor, int]:
@@ -270,7 +270,7 @@ class BasicLayer(Module):
         mlp_ratio: float = 4.0,
         drop: float = 0.0,
         drop_path: float | list[float] = 0.0,
-        downsample: Module | None = None,
+        downsample: Optional[Module] = None,
         use_checkpoint: bool = False,
         local_conv_size: int = 3,
         activation: type[Module] = nn.GELU,
@@ -349,7 +349,7 @@ class TinyViT(Module):
         super().__init__()
         self.img_size = img_size
         self.mobile_sam = mobile_sam
-        self.neck: Module | None
+        self.neck: Optional[Module]
         if mobile_sam:
             # MobileSAM adjusts the stride to match the total stride of other ViT backbones
             # used in the original SAM (stride 16)
@@ -470,7 +470,7 @@ def _load_pretrained(model: TinyViT, url: str) -> TinyViT:
             S1 = int(L1**0.5)
             S2 = int(L2**0.5)
             attention_biases = state_dict[k].view(1, n_heads1, S1, S1)
-            attention_biases = F.interpolate(attention_biases, size=(S2, S2), mode='bicubic')
+            attention_biases = F.interpolate(attention_biases, size=(S2, S2), mode="bicubic")
             state_dict[k] = attention_biases.view(n_heads2, L2)
 
     if state_dict["head.weight"].shape[0] != model.head.out_features:
@@ -498,7 +498,9 @@ def _tiny_vit_5m(pretrained: bool | str = False, **kwargs: Any) -> TinyViT:
             pretrained = "in1k"
 
         url = {
-            "in22k": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_5m_22k_distill.pth",
+            "in22k": (
+                "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_5m_22k_distill.pth"
+            ),
             "in1k": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_5m_22kto1k_distill.pth",
         }[pretrained]
         model = _load_pretrained(model, url)
@@ -521,7 +523,9 @@ def _tiny_vit_11m(pretrained: bool | str = False, **kwargs: Any) -> TinyViT:
             pretrained = "in1k"
 
         url = {
-            "in22k": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_11m_22k_distill.pth",
+            "in22k": (
+                "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_11m_22k_distill.pth"
+            ),
             "in1k": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_11m_22kto1k_distill.pth",
         }[pretrained]
         model = _load_pretrained(model, url)
@@ -549,7 +553,9 @@ def _tiny_vit_21m(pretrained: bool | str = False, **kwargs: Any) -> TinyViT:
                 pretrained = "in1k_512"
 
         url = {
-            "in22k": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_21m_22k_distill.pth",
+            "in22k": (
+                "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_21m_22k_distill.pth"
+            ),
             "in1k": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_21m_22kto1k_distill.pth",
             "in1k_384": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_21m_22kto1k_384_distill.pth",
             "in1k_512": "https://github.com/wkcn/TinyViT-model-zoo/releases/download/checkpoints/tiny_vit_21m_22kto1k_512_distill.pth",

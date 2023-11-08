@@ -48,10 +48,9 @@ def get_sift_bin_ksize_stride_pad(patch_size: int, num_spatial_bins: int) -> Tup
     out_size: int = (patch_size + 2 * pad - (ksize - 1) - 1) // stride + 1
     if out_size != num_spatial_bins:
         raise ValueError(
-            f"Patch size {patch_size} is incompatible with \
-            requested number of spatial bins {num_spatial_bins} \
-            for SIFT descriptor. Usually it happens when patch size is too small\
-            for num_spatial_bins specified"
+            f"Patch size {patch_size} is incompatible with             requested number of spatial bins"
+            f" {num_spatial_bins}             for SIFT descriptor. Usually it happens when patch size is too small     "
+            "       for num_spatial_bins specified"
         )
     return ksize, stride, pad
 
@@ -133,7 +132,7 @@ class SIFTDescriptor(Module):
         B: int = input.shape[0]
         self.pk = self.pk.to(input.dtype).to(input.device)
 
-        grads = spatial_gradient(input, 'diff')
+        grads = spatial_gradient(input, "diff")
         # unpack the edges
         gx = grads[:, :, 0]
         gy = grads[:, :, 1]
@@ -210,13 +209,13 @@ class DenseSIFTDescriptor(Module):
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}('
-            f'num_ang_bins={self.num_ang_bins}, '
-            f'num_spatial_bins={self.num_spatial_bins}, '
-            f'spatial_bin_size={self.spatial_bin_size}, '
-            f'rootsift={self.rootsift}, '
-            f'stride={self.stride}, '
-            f'clipval={self.clipval})'
+            f"{self.__class__.__name__}("
+            f"num_ang_bins={self.num_ang_bins}, "
+            f"num_spatial_bins={self.num_spatial_bins}, "
+            f"spatial_bin_size={self.spatial_bin_size}, "
+            f"rootsift={self.rootsift}, "
+            f"stride={self.stride}, "
+            f"clipval={self.clipval})"
         )
 
     def __init__(
@@ -269,7 +268,7 @@ class DenseSIFTDescriptor(Module):
         B, CH, W, H = input.size()
         self.bin_pooling_kernel = self.bin_pooling_kernel.to(input.dtype).to(input.device)
         self.PoolingConv = self.PoolingConv.to(input.dtype).to(input.device)
-        grads = spatial_gradient(input, 'diff')
+        grads = spatial_gradient(input, "diff")
         # unpack the edges
         gx = grads[:, :, 0]
         gy = grads[:, :, 1]

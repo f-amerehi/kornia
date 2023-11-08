@@ -4,6 +4,8 @@ ppdet/modeling/transformers/hybrid_encoder.py."""
 
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -19,7 +21,7 @@ class RepVggBlock(Module):
         self.conv1 = ConvNormAct(in_channels, out_channels, 3, act="none")
         self.conv2 = ConvNormAct(in_channels, out_channels, 1, act="none")
         self.act = nn.SiLU(inplace=True)
-        self.conv: nn.Conv2d | None = None
+        self.conv: Optional[nn.Conv2d] = None
 
     def forward(self, x: Tensor) -> Tensor:
         if self.conv is not None:
@@ -92,7 +94,9 @@ class AIFI(Module):
         # NOTE: cache pos_emb as buffer
         pos_emb = self.build_2d_sincos_pos_emb(W, H, C, device=x.device, dtype=x.dtype)
         q = k = x + pos_emb
-        x = self.norm1(x + self.dropout1(self.self_attn(q, k, x, need_weights=False)[0]))
+
+        attn, _ = self.self_attn(q, k, x, need_weights=True)
+        x = self.norm1(x + self.dropout1(attn))
         x = self.norm2(x + self.dropout2(self.ffn(x)))
 
         x = x.view(H, W, N, C).permute(2, 3, 0, 1)  # (H * W, N, C) -> (N, C, H, W)
@@ -110,8 +114,8 @@ class AIFI(Module):
         h: int,
         embed_dim: int,
         temp: float = 10_000.0,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
     ) -> Tensor:
         """Construct 2D sin-cos positional embeddings.
 
@@ -128,7 +132,7 @@ class AIFI(Module):
         """
         xs = torch.arange(w, device=device, dtype=dtype)
         ys = torch.arange(h, device=device, dtype=dtype)
-        grid_x, grid_y = torch.meshgrid(xs, ys)
+        grid_x, grid_y = torch.meshgrid(xs, ys, indexing="ij")
 
         pos_dim = embed_dim // 4
         omega = torch.arange(pos_dim, device=device, dtype=dtype) / pos_dim
@@ -189,7 +193,7 @@ class HybridEncoder(Module):
         self.ccfm = CCFM(len(in_channels), hidden_dim, expansion)
 
     def forward(self, fmaps: list[Tensor]) -> list[Tensor]:
-        fmaps = [proj(fmap) for proj, fmap in zip(self.input_proj, fmaps)]
-        fmaps[-1] = self.aifi(fmaps[-1])
-        fmaps = self.ccfm(fmaps)
-        return fmaps
+        projected_maps = [proj(fmap) for proj, fmap in zip(self.input_proj, fmaps)]
+        projected_maps[-1] = self.aifi(projected_maps[-1])
+        new_fmaps = self.ccfm(projected_maps)
+        return new_fmaps

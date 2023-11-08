@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import torch.nn.functional as F
 
@@ -340,7 +342,7 @@ def axis_angle_to_rotation_matrix(axis_angle: Tensor) -> Tensor:
     return rotation_matrix  # Nx3x3
 
 
-@deprecated(replace_with='axis_angle_to_rotation_matrix', version='0.7.0')
+@deprecated(replace_with="axis_angle_to_rotation_matrix", version="0.7.0")
 def angle_axis_to_rotation_matrix(axis_angle: Tensor) -> Tensor:
     return axis_angle_to_rotation_matrix(axis_angle)
 
@@ -376,7 +378,7 @@ def rotation_matrix_to_axis_angle(rotation_matrix: Tensor) -> Tensor:
     return quaternion_to_axis_angle(quaternion)
 
 
-@deprecated(replace_with='rotation_matrix_to_axis_angle', version='0.7.0')
+@deprecated(replace_with="rotation_matrix_to_axis_angle", version="0.7.0")
 def rotation_matrix_to_angle_axis(rotation_matrix: Tensor) -> Tensor:
     return rotation_matrix_to_axis_angle(rotation_matrix)
 
@@ -614,7 +616,7 @@ def quaternion_to_axis_angle(quaternion: Tensor) -> Tensor:
     return axis_angle
 
 
-@deprecated(replace_with='quaternion_to_axis_angle', version='0.7.0')
+@deprecated(replace_with="quaternion_to_axis_angle", version="0.7.0")
 def quaternion_to_angle_axis(quaternion: Tensor) -> Tensor:
     return quaternion_to_axis_angle(quaternion)
 
@@ -754,7 +756,7 @@ def axis_angle_to_quaternion(axis_angle: Tensor) -> Tensor:
     return quaternion
 
 
-@deprecated(replace_with='axis_angle_to_quaternion', version='0.7.0')
+@deprecated(replace_with="axis_angle_to_quaternion", version="0.7.0")
 def angle_axis_to_quaternion(axis_angle: Tensor) -> Tensor:
     return axis_angle_to_quaternion(axis_angle)
 
@@ -856,7 +858,7 @@ def normalize_pixel_coordinates(pixel_coordinates: Tensor, height: int, width: i
         tensor([[1.0408, 1.0202]])
     """
     if pixel_coordinates.shape[-1] != 2:
-        raise ValueError("Input pixel_coordinates must be of shape (*, 2). " "Got {}".format(pixel_coordinates.shape))
+        raise ValueError(f"Input pixel_coordinates must be of shape (*, 2). Got {pixel_coordinates.shape}")
 
     # compute normalization factor
     hw: Tensor = stack(
@@ -891,7 +893,7 @@ def denormalize_pixel_coordinates(pixel_coordinates: Tensor, height: int, width:
         tensor([[0., 0.]])
     """
     if pixel_coordinates.shape[-1] != 2:
-        raise ValueError("Input pixel_coordinates must be of shape (*, 2). " "Got {}".format(pixel_coordinates.shape))
+        raise ValueError(f"Input pixel_coordinates must be of shape (*, 2). Got {pixel_coordinates.shape}")
     # compute normalization factor
     hw: Tensor = stack([tensor(width), tensor(height)]).to(pixel_coordinates.device).to(pixel_coordinates.dtype)
 
@@ -918,7 +920,7 @@ def normalize_pixel_coordinates3d(
         the normalized pixel coordinates.
     """
     if pixel_coordinates.shape[-1] != 3:
-        raise ValueError("Input pixel_coordinates must be of shape (*, 3). " "Got {}".format(pixel_coordinates.shape))
+        raise ValueError(f"Input pixel_coordinates must be of shape (*, 3). Got {pixel_coordinates.shape}")
     # compute normalization factor
     dhw: Tensor = (
         stack([tensor(depth), tensor(width), tensor(height)]).to(pixel_coordinates.device).to(pixel_coordinates.dtype)
@@ -947,7 +949,7 @@ def denormalize_pixel_coordinates3d(
         the denormalized pixel coordinates.
     """
     if pixel_coordinates.shape[-1] != 3:
-        raise ValueError("Input pixel_coordinates must be of shape (*, 3). " "Got {}".format(pixel_coordinates.shape))
+        raise ValueError(f"Input pixel_coordinates must be of shape (*, 3). Got {pixel_coordinates.shape}")
     # compute normalization factor
     dhw: Tensor = (
         stack([tensor(depth), tensor(width), tensor(height)]).to(pixel_coordinates.device).to(pixel_coordinates.dtype)
@@ -1013,7 +1015,11 @@ def normalize_homography(
 
 
 def normal_transform_pixel(
-    height: int, width: int, eps: float = 1e-14, device: torch.device | None = None, dtype: torch.dtype | None = None
+    height: int,
+    width: int,
+    eps: float = 1e-14,
+    device: Optional[torch.device] = None,
+    dtype: Optional[torch.dtype] = None,
 ) -> Tensor:
     r"""Compute the normalization matrix from image size in pixels to [-1, 1].
 
@@ -1042,8 +1048,8 @@ def normal_transform_pixel3d(
     height: int,
     width: int,
     eps: float = 1e-14,
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
+    device: Optional[torch.device] = None,
+    dtype: Optional[torch.dtype] = None,
 ) -> Tensor:
     r"""Compute the normalization matrix from image size in pixels to [-1, 1].
 
@@ -1506,7 +1512,7 @@ def vector_to_skew_symmetric_matrix(vec: Tensor) -> Tensor:
     """
     # KORNIA_CHECK_SHAPE(vec, ["B", "3"])
     if vec.shape[-1] != 3 or len(vec.shape) > 2:
-        raise ValueError(f"Input vector must be of shape (B, 3) or (3,). " f"Got {vec.shape}")
+        raise ValueError(f"Input vector must be of shape (B, 3) or (3,). Got {vec.shape}")
     v1, v2, v3 = vec[..., 0], vec[..., 1], vec[..., 2]
     zeros = zeros_like(v1)
     skew_symmetric_matrix = stack(

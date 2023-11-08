@@ -44,7 +44,7 @@ Join the community
    get-started/highlights
    get-started/installation
    get-started/about
-   Tutorials <https://kornia-tutorials.readthedocs.io/en/latest/>
+   Tutorials <https://kornia.github.io/tutorials/>
    get-started/training
    OpenCV AI Kit <https://docs.luxonis.com/en/latest/pages/tutorials/creating-custom-nn-models/#kornia>
    get-started/governance
@@ -93,6 +93,7 @@ Join the community
    :caption: KORNIA MODELS
    :hidden:
 
+   models/efficient_vit
    models/rt_detr
    models/segment_anything
    models/mobile_sam

@@ -2,7 +2,7 @@
 # https://github.com/strasdat/Sophus/blob/master/sympy/sophus/se2.py
 from __future__ import annotations
 
-from typing import overload
+from typing import Optional, overload
 
 from kornia.core import (
     Device,
@@ -91,6 +91,13 @@ class Se2(Module):
     def __getitem__(self, idx: int | slice) -> Se2:
         return Se2(self._rotation[idx], self._translation[idx])
 
+    def _mul_se2(self, right: Se2) -> Se2:
+        so2 = self.so2
+        t = self.t
+        _r = so2 * right.so2
+        _t = t + so2 * right.t
+        return Se2(_r, _t)
+
     @overload
     def __mul__(self, right: Se2) -> Se2:
         ...
@@ -112,9 +119,7 @@ class Se2(Module):
         t = self.t
         if isinstance(right, Se2):
             KORNIA_CHECK_TYPE(right, Se2)
-            _r = so2 * right.so2
-            _t = t + so2 * right.t
-            return Se2(_r, _t)
+            return self._mul_se2(right)
         elif isinstance(right, (Vector2, Tensor)):
             # TODO change to KORNIA_CHECK_SHAPE once there is multiple shape support
             # _check_se2_r_t_shape(so2, risght)
@@ -240,7 +245,7 @@ class Se2(Module):
         return concatenate((upsilon, theta[..., None]), -1)
 
     @classmethod
-    def identity(cls, batch_size: int | None = None, device: Device | None = None, dtype: Dtype = None) -> Se2:
+    def identity(cls, batch_size: Optional[int] = None, device: Optional[Device] = None, dtype: Dtype = None) -> Se2:
         """Create a Se2 group representing an identity rotation and zero translation.
 
         Args:
@@ -314,12 +319,12 @@ class Se2(Module):
         r_inv: So2 = self.r.inverse()
         _t = -1 * self.t
         if isinstance(_t, int):
-            raise TypeError('Unexpected integer from `-1 * translation`')
+            raise TypeError("Unexpected integer from `-1 * translation`")
 
         return Se2(r_inv, r_inv * _t)
 
     @classmethod
-    def random(cls, batch_size: int | None = None, device: Device | None = None, dtype: Dtype = None) -> Se2:
+    def random(cls, batch_size: Optional[int] = None, device: Optional[Device] = None, dtype: Dtype = None) -> Se2:
         """Create a Se2 group representing a random transformation.
 
         Args:

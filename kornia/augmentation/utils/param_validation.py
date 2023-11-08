@@ -7,9 +7,9 @@ from kornia.core import Tensor, as_tensor, tensor
 
 def _common_param_check(batch_size: int, same_on_batch: Optional[bool] = None) -> None:
     """Valid batch_size and same_on_batch params."""
-    if not (type(batch_size) is int and batch_size >= 0):
+    if not (isinstance(batch_size, int) and batch_size >= 0):
         raise AssertionError(f"`batch_size` shall be a positive integer. Got {batch_size}.")
-    if same_on_batch is not None and type(same_on_batch) is not bool:
+    if same_on_batch is not None and not isinstance(same_on_batch, bool):
         raise AssertionError(f"`same_on_batch` shall be boolean. Got {same_on_batch}.")
 
 
@@ -17,9 +17,9 @@ def _range_bound(
     factor: Union[Tensor, float, Tuple[float, float], List[float]],
     name: str,
     center: Optional[float] = 0.0,
-    bounds: Optional[Tuple[float, float]] = (0, float('inf')),
-    check: Optional[str] = 'joint',
-    device: torch.device = torch.device('cpu'),
+    bounds: Optional[Tuple[float, float]] = (0, float("inf")),
+    check: Optional[str] = "joint",
+    device: torch.device = torch.device("cpu"),
     dtype: torch.dtype = torch.get_default_dtype(),
 ) -> Tensor:
     r"""Check inputs and compute the corresponding factor bounds."""
@@ -41,9 +41,9 @@ def _range_bound(
         factor_bound = as_tensor(factor, device=device, dtype=dtype)
 
     if check is not None:
-        if check == 'joint':
+        if check == "joint":
             _joint_range_check(factor_bound, name, bounds)
-        elif check == 'singular':
+        elif check == "singular":
             _singular_range_check(factor_bound, name, bounds)
         else:
             raise NotImplementedError(f"methods '{check}' not implemented.")
@@ -54,7 +54,7 @@ def _range_bound(
 def _joint_range_check(ranged_factor: Tensor, name: str, bounds: Optional[Tuple[float, float]] = None) -> None:
     """Check if bounds[0] <= ranged_factor[0] <= ranged_factor[1] <= bounds[1]"""
     if bounds is None:
-        bounds = (float('-inf'), float('inf'))
+        bounds = (float("-inf"), float("inf"))
     if ranged_factor.dim() == 1 and len(ranged_factor) == 2:
         if not bounds[0] <= ranged_factor[0] or not bounds[1] >= ranged_factor[1]:
             raise ValueError(f"{name} out of bounds. Expected inside {bounds}, got {ranged_factor}.")
@@ -62,9 +62,7 @@ def _joint_range_check(ranged_factor: Tensor, name: str, bounds: Optional[Tuple[
         if not bounds[0] <= ranged_factor[0] <= ranged_factor[1] <= bounds[1]:
             raise ValueError(f"{name}[0] should be smaller than {name}[1] got {ranged_factor}")
     else:
-        raise TypeError(
-            f"{name} should be a tensor with length 2 whose values between {bounds}. " f"Got {ranged_factor}."
-        )
+        raise TypeError(f"{name} should be a tensor with length 2 whose values between {bounds}. Got {ranged_factor}.")
 
 
 def _singular_range_check(
@@ -72,12 +70,12 @@ def _singular_range_check(
     name: str,
     bounds: Optional[Tuple[float, float]] = None,
     skip_none: bool = False,
-    mode: str = '2d',
+    mode: str = "2d",
 ) -> None:
     """Check if bounds[0] <= ranged_factor[0] <= bounds[1] and bounds[0] <= ranged_factor[1] <= bounds[1]"""
-    if mode == '2d':
+    if mode == "2d":
         dim_size = 2
-    elif mode == '3d':
+    elif mode == "3d":
         dim_size = 3
     else:
         raise ValueError(f"'mode' shall be either 2d or 3d. Got {mode}")
@@ -85,7 +83,7 @@ def _singular_range_check(
     if skip_none and ranged_factor is None:
         return
     if bounds is None:
-        bounds = (float('-inf'), float('inf'))
+        bounds = (float("-inf"), float("inf"))
     if ranged_factor.dim() == 1 and len(ranged_factor) == dim_size:
         for f in ranged_factor:
             if not bounds[0] <= f <= bounds[1]:

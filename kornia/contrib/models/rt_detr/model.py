@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 from kornia.contrib.models.base import ModelBase
 from kornia.contrib.models.rt_detr.architecture.hgnetv2 import PPHGNetV2
@@ -50,14 +51,14 @@ class RTDETRConfig:
 
     model_type: RTDETRModelType | str | int
     num_classes: int
-    checkpoint: str | None = None
+    checkpoint: Optional[str] = None
 
-    neck_hidden_dim: int | None = None
-    neck_dim_feedforward: int | None = None
-    neck_expansion: float | None = None
+    neck_hidden_dim: Optional[int] = None
+    neck_dim_feedforward: Optional[int] = None
+    neck_expansion: Optional[float] = None
     head_hidden_dim: int = 256
     head_num_queries: int = 300
-    head_num_decoder_layers: int | None = None
+    head_num_decoder_layers: Optional[int] = None
     confidence_threshold: float = 0.3
 
 
@@ -143,11 +144,11 @@ class RTDETR(ModelBase[RTDETRConfig]):
             backbone,
             HybridEncoder(backbone.out_channels, neck_hidden_dim, neck_dim_feedforward, neck_expansion),
             RTDETRHead(
-                config.num_classes,
-                config.head_hidden_dim,
-                config.head_num_queries,
-                [neck_hidden_dim] * 3,
-                head_num_decoder_layers,
+                num_classes=config.num_classes,
+                hidden_dim=config.head_hidden_dim,
+                num_queries=config.head_num_queries,
+                in_channels=[neck_hidden_dim] * 3,
+                num_decoder_layers=head_num_decoder_layers,
             ),
         )
 
@@ -155,20 +156,21 @@ class RTDETR(ModelBase[RTDETRConfig]):
             model.load_checkpoint(config.checkpoint)
         return model
 
-    def forward(self, images: Tensor) -> dict[str, Tensor]:
+    def forward(self, images: Tensor) -> tuple[Tensor, Tensor]:
         """Detect objects in an image.
 
         Args:
             images: images to be detected. Shape :math:`(N, C, H, W)`.
 
         Returns:
-            Dictionary with keys ``logits`` and ``boxes``. ``logits`` has shape :math:`(N, Q, K)` and ``boxes`` has
-            shape :math:`(N, Q, 4)`, where :math:`Q` is the number of queries, :math:`K` is the number of classes.
+            - **logits** - Tensor of shape :math:`(N, Q, K)`, where :math:`Q` is the number of queries,
+              :math:`K` is the number of classes.
+            - **boxes** - Tensor of shape :math:`(N, Q, 4)`, where :math:`Q` is the number of queries.
         """
         if self.training:
             raise RuntimeError("Only evaluation mode is supported. Please call model.eval().")
 
-        fmaps = self.backbone(images)
-        fmaps = self.neck(fmaps)
-        logits, boxes = self.head(fmaps)
-        return {"logits": logits, "boxes": boxes}
+        feats = self.backbone(images)
+        feats_buf = self.neck(feats)
+        logits, boxes = self.head(feats_buf)
+        return logits, boxes

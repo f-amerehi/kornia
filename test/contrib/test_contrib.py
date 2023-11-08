@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -9,6 +10,7 @@ import kornia.testing as utils  # test utils
 from kornia.contrib.face_detection import FaceKeypoint
 from kornia.contrib.models.rt_detr import RTDETR, DETRPostProcessor, RTDETRConfig
 from kornia.testing import assert_close
+from kornia.utils._compat import torch_version_lt
 
 
 class TestDiamondSquare:
@@ -40,7 +42,7 @@ class TestDiamondSquare:
 class TestVisionTransformer:
     @pytest.mark.parametrize("B", [1, 2])
     @pytest.mark.parametrize("H", [1, 3, 8])
-    @pytest.mark.parametrize("D", [128, 768])
+    @pytest.mark.parametrize("D", [240, 768])
     @pytest.mark.parametrize("image_size", [32, 224])
     def test_smoke(self, device, dtype, B, H, D, image_size):
         patch_size = 16
@@ -59,12 +61,19 @@ class TestVisionTransformer:
         for f in feats:
             assert f.shape == (B, T, D)
 
+    @pytest.mark.parametrize("H", [3, 8])
+    @pytest.mark.parametrize("D", [245, 1001])
+    @pytest.mark.parametrize("image_size", [32, 224])
+    def test_exception(self, device, dtype, H, D, image_size):
+        with pytest.raises(ValueError):
+            kornia.contrib.VisionTransformer(image_size=image_size, num_heads=H, embed_dim=D).to(device, dtype)
+
     def test_backbone(self, device, dtype):
         def backbone_mock(x):
             return torch.ones(1, 128, 14, 14, device=device, dtype=dtype)
 
         img = torch.rand(1, 3, 32, 32, device=device, dtype=dtype)
-        vit = kornia.contrib.VisionTransformer(backbone=backbone_mock).to(device, dtype)
+        vit = kornia.contrib.VisionTransformer(backbone=backbone_mock, num_heads=8).to(device, dtype)
         out = vit(img)
         assert out.shape == (1, 197, 128)
 
@@ -72,11 +81,11 @@ class TestVisionTransformer:
 class TestMobileViT:
     @pytest.mark.parametrize("B", [1, 2])
     @pytest.mark.parametrize("image_size", [(256, 256)])
-    @pytest.mark.parametrize("mode", ['xxs', 'xs', 's'])
+    @pytest.mark.parametrize("mode", ["xxs", "xs", "s"])
     @pytest.mark.parametrize("patch_size", [(2, 2)])
     def test_smoke(self, device, dtype, B, image_size, mode, patch_size):
         ih, iw = image_size
-        channel = {'xxs': 320, 'xs': 384, 's': 640}
+        channel = {"xxs": 320, "xs": 384, "s": 640}
 
         img = torch.rand(B, 3, ih, iw, device=device, dtype=dtype)
         mvit = kornia.contrib.MobileViT(mode=mode, patch_size=patch_size).to(device, dtype)
@@ -110,15 +119,22 @@ class TestConnectedComponents:
     def test_exception(self, device, dtype):
         img = torch.rand(1, 1, 3, 4, device=device, dtype=dtype)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError) as errinf:
             assert kornia.contrib.connected_components(img, 1.0)
+        assert "Input num_iterations must be a positive integer." in str(errinf)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError) as errinf:
+            assert kornia.contrib.connected_components("not a tensor", 0)
+        assert "Input imagetype is not a Tensor. Got:" in str(errinf)
+
+        with pytest.raises(TypeError) as errinf:
             assert kornia.contrib.connected_components(img, 0)
+        assert "Input num_iterations must be a positive integer." in str(errinf)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as errinf:
             img = torch.rand(1, 2, 3, 4, device=device, dtype=dtype)
             assert kornia.contrib.connected_components(img, 2)
+        assert "Input image shape must be (*,1,H,W). Got:" in str(errinf)
 
     def test_value(self, device, dtype):
         img = torch.tensor(
@@ -429,7 +445,7 @@ class TestLambdaModule:
 
 
 class TestImageStitcher:
-    @pytest.mark.parametrize("estimator", ['ransac', 'vanilla'])
+    @pytest.mark.parametrize("estimator", ["ransac", "vanilla"])
     def test_smoke(self, estimator, device, dtype):
         B, C, H, W = 1, 3, 6, 6
         sample1 = torch.tensor(
@@ -525,7 +541,7 @@ class TestImageStitcher:
             "batch_indexes": torch.zeros((15,), device=device, dtype=dtype),
         }
         with patch(
-            'kornia.contrib.ImageStitcher.on_matcher', new_callable=PropertyMock, return_value=lambda x: return_value
+            "kornia.contrib.ImageStitcher.on_matcher", new_callable=PropertyMock, return_value=lambda x: return_value
         ):
             # NOTE: This will need to download the pretrained weights.
             # To avoid that, we mock as below
@@ -536,6 +552,7 @@ class TestImageStitcher:
             assert out.shape[:-1] == torch.Size([1, 3, 6])
             assert out.shape[-1] <= 12
 
+    @pytest.mark.slow
     def test_exception(self, device, dtype):
         B, C, H, W = 1, 3, 224, 224
         sample1 = torch.rand(B, C, H, W, device=device, dtype=dtype)
@@ -544,7 +561,7 @@ class TestImageStitcher:
         matcher = kornia.feature.LoFTR(None)
 
         with pytest.raises(NotImplementedError):
-            stitcher = kornia.contrib.ImageStitcher(matcher, estimator='random').to(device=device, dtype=dtype)
+            stitcher = kornia.contrib.ImageStitcher(matcher, estimator="random").to(device=device, dtype=dtype)
 
         stitcher = kornia.contrib.ImageStitcher(matcher).to(device=device, dtype=dtype)
         with pytest.raises(RuntimeError):
@@ -674,9 +691,11 @@ class TestHistMatch:
 
 
 class TestFaceDetection:
+    @pytest.mark.slow
     def test_smoke(self, device, dtype):
         assert kornia.contrib.FaceDetector().to(device, dtype) is not None
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("batch_size", [1, 2, 4])
     def test_valid(self, batch_size, device, dtype):
         torch.manual_seed(44)
@@ -689,11 +708,13 @@ class TestFaceDetection:
         assert dets[0].shape[0] >= 0  # number of detections
         assert dets[0].shape[1] == 15  # dims of each detection
 
+    @pytest.mark.slow
     def test_jit(self, device, dtype):
         op = kornia.contrib.FaceDetector().to(device, dtype)
         op_jit = torch.jit.script(op)
         assert op_jit is not None
 
+    @pytest.mark.slow
     def test_results(self, device, dtype):
         data = torch.tensor(
             [0.0, 0.0, 100.0, 200.0, 10.0, 10.0, 20.0, 10.0, 10.0, 50.0, 100.0, 50.0, 150.0, 10.0, 0.99],
@@ -718,6 +739,7 @@ class TestFaceDetection:
         assert res.get_keypoint(FaceKeypoint.MOUTH_LEFT).tolist() == [100.0, 50.0]
         assert res.get_keypoint(FaceKeypoint.MOUTH_RIGHT).tolist() == [150.0, 10.0]
 
+    @pytest.mark.slow
     def test_results_raise(self, device, dtype):
         data = torch.zeros(14, device=device, dtype=dtype)
         with pytest.raises(ValueError):
@@ -725,12 +747,14 @@ class TestFaceDetection:
 
 
 class TestEdgeDetector:
+    @pytest.mark.slow
     def test_smoke(self, device, dtype):
         img = torch.rand(2, 3, 64, 64, device=device, dtype=dtype)
         net = kornia.contrib.EdgeDetector().to(device, dtype)
         out = net(img)
         assert out.shape == (2, 1, 64, 64)
 
+    @pytest.mark.slow
     def test_jit(self, device, dtype):
         op = kornia.contrib.EdgeDetector().to(device, dtype)
         op_jit = torch.jit.script(op)
@@ -743,16 +767,67 @@ class TestObjectDetector:
         confidence = 0.3
         config = RTDETRConfig("resnet50d", 10, head_num_queries=10)
         model = RTDETR.from_config(config).to(device, dtype).eval()
-        pre_processor = kornia.contrib.object_detection.ResizePreProcessor(32)
+        pre_processor = kornia.contrib.object_detection.ResizePreProcessor((32, 32))
         post_processor = DETRPostProcessor(confidence).to(device, dtype).eval()
         detector = kornia.contrib.ObjectDetector(model, pre_processor, post_processor)
 
         sizes = torch.randint(5, 10, (batch_size, 2)) * 32
         imgs = [torch.randn(3, h, w, device=device, dtype=dtype) for h, w in sizes]
-        detections = detector.predict(imgs)
+        pre_processor_out = pre_processor(imgs)
+        detections = detector(imgs)
 
+        assert pre_processor_out[0].shape[-1] == 32
+        assert pre_processor_out[0].shape[-2] == 32
         assert len(detections) == batch_size
         for dets in detections:
             assert dets.shape[1] == 6
             assert torch.all(dets[:, 0].int() == dets[:, 0])
             assert torch.all(dets[:, 1] >= 0.3)
+
+    @pytest.mark.slow
+    @pytest.mark.skipif(torch_version_lt(2, 0, 0), reason="Unsupported ONNX opset version: 16")
+    @pytest.mark.parametrize("variant", ("resnet50d", "hgnetv2_l"))
+    def test_onnx(self, device, dtype, tmp_path: Path, variant: str):
+        config = RTDETRConfig(variant, 1)
+        model = RTDETR.from_config(config).to(device=device, dtype=dtype).eval()
+        pre_processor = kornia.contrib.object_detection.ResizePreProcessor(640)
+        post_processor = DETRPostProcessor(0.3)
+        detector = kornia.contrib.ObjectDetector(model, pre_processor, post_processor)
+
+        data = torch.rand(3, 400, 640, device=device, dtype=dtype)
+
+        model_path = tmp_path / "rtdetr.onnx"
+
+        dynamic_axes = {"images": {0: "N"}}
+        torch.onnx.export(
+            detector,
+            [data],
+            model_path,
+            input_names=["images"],
+            output_names=["detections"],
+            dynamic_axes=dynamic_axes,
+            opset_version=16,
+        )
+
+        assert model_path.is_file()
+
+    def test_results_from_detections(self, device, dtype):
+        # label_id, confidence, data
+        detections = torch.tensor(
+            [
+                [0, 0.9, 0.0, 0.0, 1.0, 1.0],
+                [1, 0.8, 0.0, 0.0, 1.0, 1.0],
+                [2, 0.7, 0.0, 0.0, 1.0, 1.0],
+                [3, 0.6, 0.0, 0.0, 1.0, 1.0],
+                [4, 0.5, 0.0, 0.0, 1.0, 1.0],
+            ],
+            device=device,
+            dtype=dtype,
+        )
+
+        detector_results: list = kornia.contrib.object_detection.results_from_detections(detections, format="xywh")
+
+        assert len(detector_results) == 5
+        for j, det in enumerate(detector_results):
+            for i in range(4):
+                assert det.bbox.data[i] == float(detections[j, i + 2])

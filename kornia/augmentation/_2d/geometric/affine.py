@@ -33,7 +33,7 @@ class RandomAffine(GeometricAugmentationBase2D):
             If (a, b, c, d), then x-axis shear in (shear[0], shear[1]) and y-axis shear in (shear[2], shear[3])
             will be applied. Will not apply shear by default.
         resample: resample mode from "nearest" (0) or "bilinear" (1).
-        padding_mode: padding mode from "zeros" (0), "border" (1) or "refection" (2).
+        padding_mode: padding mode from "zeros" (0), "border" (1) or "reflection" (2).
         same_on_batch: apply the same transformation across the batch.
         align_corners: interpolation flag.
         p: probability of applying the transformation.
@@ -110,7 +110,7 @@ class RandomAffine(GeometricAugmentationBase2D):
     ) -> Tensor:
         _, _, height, width = input.shape
         if not isinstance(transform, Tensor):
-            raise TypeError(f'Expected the `transform` be a Tensor. Got {type(transform)}.')
+            raise TypeError(f"Expected the `transform` be a Tensor. Got {type(transform)}.")
 
         return warp_affine(
             input,
@@ -129,7 +129,7 @@ class RandomAffine(GeometricAugmentationBase2D):
         size: Optional[Tuple[int, int]] = None,
     ) -> Tensor:
         if not isinstance(transform, Tensor):
-            raise TypeError(f'Expected the `transform` be a Tensor. Got {type(transform)}.')
+            raise TypeError(f"Expected the `transform` be a Tensor. Got {type(transform)}.")
         return self.apply_transform(
             input,
             params=self._params,

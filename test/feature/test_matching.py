@@ -71,7 +71,7 @@ class TestMatchMNN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists)
         assert_close(idxs, expected_idx)
-        matcher = DescriptorMatcher('mnn').to(device)
+        matcher = DescriptorMatcher("mnn").to(device)
         dists1, idxs1 = matcher(desc1, desc2)
         assert_close(dists1, expected_dists)
         assert_close(idxs1, expected_idx)
@@ -113,7 +113,7 @@ class TestMatchSNN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists)
         assert_close(idxs, expected_idx)
-        matcher = DescriptorMatcher('snn', 0.8).to(device)
+        matcher = DescriptorMatcher("snn", 0.8).to(device)
         dists1, idxs1 = matcher(desc1, desc2)
         assert_close(dists1, expected_dists)
         assert_close(idxs1, expected_idx)
@@ -127,7 +127,7 @@ class TestMatchSNN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists)
         assert_close(idxs, expected_idx)
-        matcher = DescriptorMatcher('snn', 0.1).to(device)
+        matcher = DescriptorMatcher("snn", 0.1).to(device)
         dists1, idxs1 = matcher(desc1, desc2)
         assert_close(dists1, expected_dists)
         assert_close(idxs1, expected_idx)
@@ -162,7 +162,7 @@ class TestMatchSMNN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists)
         assert_close(idxs, expected_idx)
-        matcher = DescriptorMatcher('smnn', 0.8).to(device)
+        matcher = DescriptorMatcher("smnn", 0.8).to(device)
         dists1, idxs1 = matcher(desc1, desc2)
         assert_close(dists1, expected_dists)
         assert_close(idxs1, expected_idx)
@@ -184,7 +184,7 @@ class TestMatchSMNN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists)
         assert_close(idxs, expected_idx)
-        matcher = DescriptorMatcher('smnn', 0.1).to(device)
+        matcher = DescriptorMatcher("smnn", 0.1).to(device)
         dists1, idxs1 = matcher(desc1, desc2)
         assert_close(dists1, expected_dists)
         assert_close(idxs1, expected_idx)
@@ -219,7 +219,7 @@ class TestMatchSMNN:
         desc2 = torch.rand(7, 8, device=device)
         desc1 = utils.tensor_to_gradcheck_var(desc1)  # to var
         desc2 = utils.tensor_to_gradcheck_var(desc2)  # to var
-        matcher = DescriptorMatcher('smnn', 0.8).to(device)
+        matcher = DescriptorMatcher("smnn", 0.8).to(device)
         assert gradcheck(match_smnn, (desc1, desc2, 0.8), raise_exception=True, nondet_tol=1e-4, fast_mode=True)
         assert gradcheck(matcher, (desc1, desc2), raise_exception=True, nondet_tol=1e-4, fast_mode=True)
 
@@ -273,7 +273,7 @@ class TestMatchFGINN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists, rtol=0.001, atol=1e-3)
         assert_close(idxs, expected_idx)
-        matcher = GeometryAwareDescriptorMatcher('fginn', {"spatial_th": 0.01}).to(device)
+        matcher = GeometryAwareDescriptorMatcher("fginn", {"spatial_th": 0.01}).to(device)
         dists1, idxs1 = matcher(desc1, desc2, lafs1, lafs2)
         assert_close(dists1, expected_dists, rtol=0.001, atol=1e-3)
         assert_close(idxs1, expected_idx)
@@ -289,7 +289,7 @@ class TestMatchFGINN:
         expected_idx = torch.tensor([[1, 3], [2, 2], [3, 1], [4, 0], [5, 4]], device=device)
         assert_close(dists, expected_dists, rtol=0.001, atol=1e-3)
         assert_close(idxs, expected_idx)
-        matcher = GeometryAwareDescriptorMatcher('fginn', {"spatial_th": 2.0, "mutual": True}).to(device)
+        matcher = GeometryAwareDescriptorMatcher("fginn", {"spatial_th": 2.0, "mutual": True}).to(device)
         dists1, idxs1 = matcher(desc1, desc2, lafs1, lafs2)
         assert_close(dists1, expected_dists, rtol=0.001, atol=1e-3)
         assert_close(idxs1, expected_idx)
@@ -315,7 +315,7 @@ class TestMatchFGINN:
         expected_idx = torch.tensor([[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]], device=device)
         assert_close(dists, expected_dists, rtol=0.001, atol=1e-3)
         assert_close(idxs, expected_idx)
-        matcher = GeometryAwareDescriptorMatcher('fginn', {"spatial_th": 2.0}).to(device)
+        matcher = GeometryAwareDescriptorMatcher("fginn", {"spatial_th": 2.0}).to(device)
         dists1, idxs1 = matcher(desc1, desc2, lafs1, lafs2)
         assert_close(dists1, expected_dists, rtol=0.001, atol=1e-3)
         assert_close(idxs1, expected_idx)
@@ -344,28 +344,30 @@ class TestMatchFGINN:
         center2 = torch.rand(1, 7, 2, device=device)
         lafs1 = laf_from_center_scale_ori(center1)
         lafs2 = laf_from_center_scale_ori(center2)
-        matcher = GeometryAwareDescriptorMatcher('fginn', 0.8).to(device)
-        matcher_jit = torch.jit.script(GeometryAwareDescriptorMatcher('fginn', 0.8).to(device))
+        matcher = GeometryAwareDescriptorMatcher("fginn", 0.8).to(device)
+        matcher_jit = torch.jit.script(GeometryAwareDescriptorMatcher("fginn", 0.8).to(device))
         assert_close(matcher(desc1, desc2)[0], matcher_jit(desc1, desc2, lafs1, lafs2)[0])
         assert_close(matcher(desc1, desc2)[1], matcher_jit(desc1, desc2, lafs1, lafs2)[1])
 
 
 class TestAdalam:
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_real(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
         data_dev = utils.dict_to(data, device, dtype)
         with torch.no_grad():
-            dists, idxs = match_adalam(data_dev['descs1'], data_dev['descs2'], data_dev['lafs1'], data_dev['lafs2'])
+            dists, idxs = match_adalam(data_dev["descs1"], data_dev["descs2"], data_dev["lafs1"], data_dev["lafs2"])
         assert idxs.shape[1] == 2
         assert dists.shape[1] == 1
         assert idxs.shape[0] == dists.shape[0]
-        assert dists.shape[0] <= data_dev['descs1'].shape[0]
-        assert dists.shape[0] <= data_dev['descs2'].shape[0]
-        expected_idxs = data_dev['expected_idxs'].long()
+        assert dists.shape[0] <= data_dev["descs1"].shape[0]
+        assert dists.shape[0] <= data_dev["descs2"].shape[0]
+        expected_idxs = data_dev["expected_idxs"].long()
         assert_close(idxs, expected_idxs, rtol=1e-4, atol=1e-4)
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_single_nocrash(self, device, dtype, data):
         torch.random.manual_seed(0)
@@ -373,12 +375,13 @@ class TestAdalam:
         data_dev = utils.dict_to(data, device, dtype)
         with torch.no_grad():
             dists, idxs = match_adalam(
-                data_dev['descs1'], data_dev['descs2'][:1], data_dev['lafs1'], data_dev['lafs2'][:, :1]
+                data_dev["descs1"], data_dev["descs2"][:1], data_dev["lafs1"], data_dev["lafs2"][:, :1]
             )
             dists, idxs = match_adalam(
-                data_dev['descs1'][:1], data_dev['descs2'], data_dev['lafs1'][:, :1], data_dev['lafs2']
+                data_dev["descs1"][:1], data_dev["descs2"], data_dev["lafs1"][:, :1], data_dev["lafs2"]
             )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_small_user_conf(self, device, dtype, data):
         torch.random.manual_seed(0)
@@ -387,13 +390,14 @@ class TestAdalam:
         adalam_config = {"device": device}
         with torch.no_grad():
             dists, idxs = match_adalam(
-                data_dev['descs1'][:4],
-                data_dev['descs2'][:4],
-                data_dev['lafs1'][:, :4],
-                data_dev['lafs2'][:, :4],
+                data_dev["descs1"][:4],
+                data_dev["descs2"][:4],
+                data_dev["lafs1"][:, :4],
+                data_dev["lafs2"][:, :4],
                 config=adalam_config,
             )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_empty_nocrash(self, device, dtype, data):
         torch.random.manual_seed(0)
@@ -401,18 +405,19 @@ class TestAdalam:
         data_dev = utils.dict_to(data, device, dtype)
         with torch.no_grad():
             dists, idxs = match_adalam(
-                data_dev['descs1'],
+                data_dev["descs1"],
                 torch.empty(0, 128, device=device, dtype=dtype),
-                data_dev['lafs1'],
+                data_dev["lafs1"],
                 torch.empty(0, 0, 2, 3, device=device, dtype=dtype),
             )
             dists, idxs = match_adalam(
                 torch.empty(0, 128, device=device, dtype=dtype),
-                data_dev['descs2'],
+                data_dev["descs2"],
                 torch.empty(0, 0, 2, 3, device=device, dtype=dtype),
-                data_dev['lafs2'],
+                data_dev["lafs2"],
             )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_small(self, device, dtype, data):
         torch.random.manual_seed(0)
@@ -420,9 +425,10 @@ class TestAdalam:
         data_dev = utils.dict_to(data, device, dtype)
         with torch.no_grad():
             dists, idxs = match_adalam(
-                data_dev['descs1'][:4], data_dev['descs2'][:4], data_dev['lafs1'][:, :4], data_dev['lafs2'][:, :4]
+                data_dev["descs1"][:4], data_dev["descs2"][:4], data_dev["lafs1"][:, :4], data_dev["lafs2"][:, :4]
             )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_seeds_fail(self, device, dtype, data):
         torch.random.manual_seed(0)
@@ -430,73 +436,77 @@ class TestAdalam:
         data_dev = utils.dict_to(data, device, dtype)
         with torch.no_grad():
             dists, idxs = match_adalam(
-                data_dev['descs1'][:100],
-                data_dev['descs2'][:100],
-                data_dev['lafs1'][:, :100],
-                data_dev['lafs2'][:, :100],
+                data_dev["descs1"][:100],
+                data_dev["descs2"][:100],
+                data_dev["lafs1"][:, :100],
+                data_dev["lafs2"][:, :100],
             )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["adalam_idxs"], indirect=True)
     def test_module(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
         data_dev = utils.dict_to(data, device, dtype)
-        matcher = GeometryAwareDescriptorMatcher('adalam', {"device": device}).to(device, dtype)
+        matcher = GeometryAwareDescriptorMatcher("adalam", {"device": device}).to(device, dtype)
         with torch.no_grad():
-            dists, idxs = matcher(data_dev['descs1'], data_dev['descs2'], data_dev['lafs1'], data_dev['lafs2'])
+            dists, idxs = matcher(data_dev["descs1"], data_dev["descs2"], data_dev["lafs1"], data_dev["lafs2"])
         assert idxs.shape[1] == 2
         assert dists.shape[1] == 1
         assert idxs.shape[0] == dists.shape[0]
-        assert dists.shape[0] <= data_dev['descs1'].shape[0]
-        assert dists.shape[0] <= data_dev['descs2'].shape[0]
-        expected_idxs = data_dev['expected_idxs'].long()
+        assert dists.shape[0] <= data_dev["descs1"].shape[0]
+        assert dists.shape[0] <= data_dev["descs2"].shape[0]
+        expected_idxs = data_dev["expected_idxs"].long()
         assert_close(idxs, expected_idxs, rtol=1e-4, atol=1e-4)
 
 
 class TestLightGlueDISK:
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["lightglue_idxs"], indirect=True)
     def test_real(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
         data_dev = utils.dict_to(data, device, dtype)
         config = {"depth_confidence": -1, "width_confidence": -1}
-        lg = LightGlueMatcher('disk', config).to(device=device, dtype=dtype).eval()
+        lg = LightGlueMatcher("disk", config).to(device=device, dtype=dtype).eval()
         with torch.no_grad():
-            dists, idxs = lg(data_dev['descs1'], data_dev['descs2'], data_dev['lafs1'], data_dev['lafs2'])
+            dists, idxs = lg(data_dev["descs1"], data_dev["descs2"], data_dev["lafs1"], data_dev["lafs2"])
         assert idxs.shape[1] == 2
         assert dists.shape[1] == 1
         assert idxs.shape[0] == dists.shape[0]
-        assert dists.shape[0] <= data_dev['descs1'].shape[0]
-        assert dists.shape[0] <= data_dev['descs2'].shape[0]
-        expected_idxs = data_dev['lightglue_disk_idxs'].long()
+        assert dists.shape[0] <= data_dev["descs1"].shape[0]
+        assert dists.shape[0] <= data_dev["descs2"].shape[0]
+        expected_idxs = data_dev["lightglue_disk_idxs"].long()
         assert_close(idxs, expected_idxs, rtol=1e-4, atol=1e-4)
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["lightglue_idxs"], indirect=True)
     def test_single_nocrash(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
         data_dev = utils.dict_to(data, device, dtype)
-        lg = LightGlueMatcher('disk').to(device, dtype).eval()
+        lg = LightGlueMatcher("disk").to(device, dtype).eval()
         with torch.no_grad():
-            dists, idxs = lg(data_dev['descs1'], data_dev['descs2'][:1], data_dev['lafs1'], data_dev['lafs2'][:, :1])
-            dists, idxs = lg(data_dev['descs1'][:1], data_dev['descs2'], data_dev['lafs1'][:, :1], data_dev['lafs2'])
+            dists, idxs = lg(data_dev["descs1"], data_dev["descs2"][:1], data_dev["lafs1"], data_dev["lafs2"][:, :1])
+            dists, idxs = lg(data_dev["descs1"][:1], data_dev["descs2"], data_dev["lafs1"][:, :1], data_dev["lafs2"])
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("data", ["lightglue_idxs"], indirect=True)
     def test_empty_nocrash(self, device, dtype, data):
         torch.random.manual_seed(0)
         # This is not unit test, but that is quite good integration test
         data_dev = utils.dict_to(data, device, dtype)
-        lg = LightGlueMatcher('disk').to(device, dtype).eval()
+        lg = LightGlueMatcher("disk").to(device, dtype).eval()
         with torch.no_grad():
             dists, idxs = lg(
-                data_dev['descs1'],
+                data_dev["descs1"],
                 torch.empty(0, 256, device=device, dtype=dtype),
-                data_dev['lafs1'],
+                data_dev["lafs1"],
                 torch.empty(0, 0, 2, 3, device=device, dtype=dtype),
             )
             dists, idxs = lg(
                 torch.empty(0, 256, device=device, dtype=dtype),
-                data_dev['descs2'],
+                data_dev["descs2"],
                 torch.empty(0, 0, 2, 3, device=device, dtype=dtype),
-                data_dev['lafs2'],
+                data_dev["lafs2"],
             )

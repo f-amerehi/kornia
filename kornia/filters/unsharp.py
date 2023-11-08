@@ -6,7 +6,7 @@ from .gaussian import gaussian_blur2d
 
 
 def unsharp_mask(
-    input: Tensor, kernel_size: tuple[int, int] | int, sigma: tuple[float, float] | Tensor, border_type: str = 'reflect'
+    input: Tensor, kernel_size: tuple[int, int] | int, sigma: tuple[float, float] | Tensor, border_type: str = "reflect"
 ) -> Tensor:
     r"""Create an operator that sharpens a tensor by applying operation out = 2 * image - gaussian_blur2d(image).
 
@@ -52,8 +52,7 @@ class UnsharpMask(Module):
         - Output: :math:`(B, C, H, W)`
 
     .. note::
-       See a working example `here <https://kornia-tutorials.readthedocs.io/en/latest/
-       unsharp_mask.html>`__.
+       See a working example `here <https://kornia.github.io/tutorials/nbs/unsharp_mask.html>`__.
 
     Examples:
         >>> input = torch.rand(2, 4, 5, 5)
@@ -64,7 +63,7 @@ class UnsharpMask(Module):
     """
 
     def __init__(
-        self, kernel_size: tuple[int, int] | int, sigma: tuple[float, float] | Tensor, border_type: str = 'reflect'
+        self, kernel_size: tuple[int, int] | int, sigma: tuple[float, float] | Tensor, border_type: str = "reflect"
     ) -> None:
         super().__init__()
         self.kernel_size = kernel_size

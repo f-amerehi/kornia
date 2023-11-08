@@ -8,7 +8,7 @@ from .kernels import _unpack_2d_ks, get_box_kernel1d, get_box_kernel2d
 
 
 def box_blur(
-    input: Tensor, kernel_size: tuple[int, int] | int, border_type: str = 'reflect', separable: bool = False
+    input: Tensor, kernel_size: tuple[int, int] | int, border_type: str = "reflect", separable: bool = False
 ) -> Tensor:
     r"""Blur an image using the box filter.
 
@@ -36,8 +36,7 @@ def box_blur(
         the blurred tensor with shape :math:`(B,C,H,W)`.
 
     .. note::
-       See a working example `here <https://kornia-tutorials.readthedocs.io/en/latest/
-       filtering_operators.html>`__.
+       See a working example `here <https://kornia.github.io/tutorials/nbs/filtering_operators.html>`__.
 
     Example:
         >>> input = torch.rand(2, 4, 5, 7)
@@ -96,7 +95,7 @@ class BoxBlur(Module):
     """
 
     def __init__(
-        self, kernel_size: tuple[int, int] | int, border_type: str = 'reflect', separable: bool = False
+        self, kernel_size: tuple[int, int] | int, border_type: str = "reflect", separable: bool = False
     ) -> None:
         super().__init__()
         self.kernel_size = kernel_size

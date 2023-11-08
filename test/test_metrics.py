@@ -196,6 +196,64 @@ class TestPsnr:
         assert_close(actual, expected)
 
 
+class TestAepe:
+    def test_metric_mean_reduction(self, device, dtype):
+        sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+        expected = torch.tensor(0.565685424, device=device, dtype=dtype)
+        actual = kornia.metrics.aepe(sample, 1.4 * sample, reduction="mean")
+        assert_close(actual, expected)
+
+    def test_metric_sum_reduction(self, device, dtype):
+        sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+        expected = torch.tensor(1.4142, device=device, dtype=dtype) * 4**2
+        actual = kornia.metrics.aepe(sample, 2.0 * sample, reduction="sum")
+        assert_close(actual, expected)
+
+    def test_metric_no_reduction(self, device, dtype):
+        sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+        expected = torch.zeros(4, 4, device=device, dtype=dtype) + 1.4142
+        actual = kornia.metrics.aepe(sample, 2.0 * sample, reduction="none")
+        assert_close(actual, expected)
+
+    def test_perfect_fit(self, device, dtype):
+        sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+        expected = torch.zeros(4, 4, device=device, dtype=dtype)
+        actual = kornia.metrics.aepe(sample, sample, reduction="none")
+        assert_close(actual, expected)
+
+    def test_aepe_alias(self, device, dtype):
+        sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+        expected = torch.zeros(4, 4, device=device, dtype=dtype)
+        actual_aepe = kornia.metrics.aepe(sample, sample, reduction="none")
+        actual_alias = kornia.metrics.average_endpoint_error(sample, sample, reduction="none")
+        assert_close(actual_aepe, expected)
+        assert_close(actual_alias, expected)
+        assert_close(actual_aepe, actual_alias)
+
+    def test_exception(self, device, dtype):
+        with pytest.raises(TypeError) as errinfo:
+            criterion = kornia.metrics.AEPE()
+            criterion(None, torch.ones(4, 4, 2, device=device, dtype=dtype))
+        assert "Not a Tensor type. Got" in str(errinfo)
+
+        with pytest.raises(NotImplementedError) as errinfo:
+            sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+            _ = kornia.metrics.aepe(sample, 2.0 * sample, reduction="foo")
+        assert "Invalid reduction option." in str(errinfo)
+
+        with pytest.raises(Exception) as errinfo:
+            sample = torch.ones(4, 4, 2, device=device, dtype=dtype)
+            _ = kornia.metrics.aepe(sample, 2.0 * sample[..., 0], reduction="mean")
+        assert "shape must be [['*', '2']]. Got" in str(errinfo)
+
+    def test_smoke(self, device, dtype):
+        input = torch.rand(3, 3, 2, device=device, dtype=dtype)
+        target = torch.rand(3, 3, 2, device=device, dtype=dtype)
+
+        criterion = kornia.metrics.AEPE()
+        assert criterion(input, target) is not None
+
+
 class TestMeanAveragePrecision:
     def test_smoke(self, device, dtype):
         boxes = torch.tensor([[100, 50, 150, 100.0]], device=device, dtype=dtype)
@@ -226,11 +284,11 @@ class TestSSIM3d(BaseTester):
     @pytest.mark.parametrize(
         "shape,padding,window_size,max_value",
         [
-            ((1, 1, 3, 3, 3), 'same', 5, 1.0),
-            ((1, 1, 3, 3, 3), 'same', 3, 2.0),
-            ((1, 1, 3, 3, 3), 'same', 3, 0.5),
-            ((1, 1, 3, 3, 3), 'valid', 3, 1.0),
-            ((2, 4, 3, 3, 3), 'same', 3, 1.0),
+            ((1, 1, 3, 3, 3), "same", 5, 1.0),
+            ((1, 1, 3, 3, 3), "same", 3, 2.0),
+            ((1, 1, 3, 3, 3), "same", 3, 0.5),
+            ((1, 1, 3, 3, 3), "valid", 3, 1.0),
+            ((2, 4, 3, 3, 3), "same", 3, 1.0),
         ],
     )
     def test_smoke(self, shape, padding, window_size, max_value, device, dtype):
@@ -248,10 +306,10 @@ class TestSSIM3d(BaseTester):
     @pytest.mark.parametrize(
         "shape,padding,window_size,expected",
         [
-            ((1, 1, 2, 2, 3), 'same', 3, (1, 1, 2, 2, 3)),
-            ((1, 1, 3, 3, 3), 'same', 5, (1, 1, 3, 3, 3)),
-            ((1, 1, 3, 3, 3), 'valid', 3, (1, 1, 1, 1, 1)),
-            ((2, 4, 3, 3, 3), 'same', 3, (2, 4, 3, 3, 3)),
+            ((1, 1, 2, 2, 3), "same", 3, (1, 1, 2, 2, 3)),
+            ((1, 1, 3, 3, 3), "same", 5, (1, 1, 3, 3, 3)),
+            ((1, 1, 3, 3, 3), "valid", 3, (1, 1, 1, 1, 1)),
+            ((2, 4, 3, 3, 3), "same", 3, (2, 4, 3, 3, 3)),
         ],
     )
     def test_cardinality(self, shape, padding, window_size, expected, device, dtype):
@@ -267,27 +325,27 @@ class TestSSIM3d(BaseTester):
         # Check if both are tensors
         with pytest.raises(TypeError) as errinfo:
             kornia.metrics.ssim3d(1.0, img, 3)
-        assert 'Not a Tensor type. Got:' in str(errinfo)
+        assert "Not a Tensor type. Got:" in str(errinfo)
 
         with pytest.raises(TypeError) as errinfo:
             kornia.metrics.ssim3d(img, 1.0, 3)
-        assert 'Not a Tensor type. Got:' in str(errinfo)
+        assert "Not a Tensor type. Got:" in str(errinfo)
 
         # Check both shapes
         img_wrong_shape = torch.rand(3, 3, device=device, dtype=dtype)
         with pytest.raises(TypeError) as errinfo:
             kornia.metrics.ssim3d(img, img_wrong_shape, 3)
-        assert 'shape must be [' in str(errinfo)
+        assert "shape must be [" in str(errinfo)
 
         with pytest.raises(TypeError) as errinfo:
             kornia.metrics.ssim3d(img_wrong_shape, img, 3)
-        assert 'shape must be [' in str(errinfo)
+        assert "shape must be [" in str(errinfo)
 
         # Check if same shape
         img_b = torch.rand(1, 1, 3, 3, 4, device=device, dtype=dtype)
         with pytest.raises(Exception) as errinfo:
             kornia.metrics.ssim3d(img, img_b, 3)
-        assert 'img1 and img2 shapes must be the same. Got:' in str(errinfo)
+        assert "img1 and img2 shapes must be the same. Got:" in str(errinfo)
 
     def test_unit(self, device, dtype):
         img_a = torch.tensor(
@@ -306,7 +364,7 @@ class TestSSIM3d(BaseTester):
 
         img_b = torch.ones(1, 1, 3, 3, 3, device=device, dtype=dtype) * 0.5
 
-        actual = kornia.metrics.ssim3d(img_a, img_b, 3, padding='same')
+        actual = kornia.metrics.ssim3d(img_a, img_b, 3, padding="same")
 
         expected = torch.tensor(
             [
@@ -327,10 +385,10 @@ class TestSSIM3d(BaseTester):
     @pytest.mark.parametrize(
         "shape,padding,window_size,max_value",
         [
-            ((1, 1, 3, 3, 3), 'same', 5, 1.0),
-            ((1, 1, 3, 3, 3), 'same', 3, 2.0),
-            ((1, 1, 3, 3, 3), 'same', 3, 0.5),
-            ((1, 1, 3, 3, 3), 'valid', 3, 1.0),
+            ((1, 1, 3, 3, 3), "same", 5, 1.0),
+            ((1, 1, 3, 3, 3), "same", 3, 2.0),
+            ((1, 1, 3, 3, 3), "same", 3, 0.5),
+            ((1, 1, 3, 3, 3), "valid", 3, 1.0),
         ],
     )
     def test_module(self, shape, padding, window_size, max_value, device, dtype):

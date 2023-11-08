@@ -1,9 +1,10 @@
+import io
 import sys
 from pathlib import Path
 
-import cv2
 import numpy as np
 import pytest
+import requests
 import torch
 
 from kornia.core import Tensor
@@ -24,8 +25,42 @@ def create_random_img8(height: int, width: int, channels: int) -> np.ndarray:
     return (np.random.rand(height, width, channels) * 255).astype(np.uint8)  # noqa: NPY002
 
 
-def create_random_img8_torch(height: int, width: int, channels: int) -> Tensor:
-    return (torch.rand(channels, height, width) * 255).to(torch.uint8)
+def create_random_img8_torch(height: int, width: int, channels: int, device=None) -> Tensor:
+    return (torch.rand(channels, height, width, device=device) * 255).to(torch.uint8)
+
+
+def _download_image(url: str, filename: str = "") -> Path:
+    # TODO: move this to testing
+
+    filename = url.split("/")[-1] if len(filename) == 0 else filename
+    # Download
+    bytesio = io.BytesIO(requests.get(url, timeout=60).content)
+    # Save file
+    with open(filename, "wb") as outfile:
+        outfile.write(bytesio.getbuffer())
+
+    return Path(filename)
+
+
+@pytest.fixture(scope="session")
+def png_image(tmp_path_factory):
+    url = "https://github.com/kornia/data/raw/main/simba.png"
+    filename = tmp_path_factory.mktemp("data") / "image.png"
+    filename = _download_image(url, str(filename))
+    return filename
+
+
+@pytest.fixture(scope="session")
+def jpg_image(tmp_path_factory):
+    url = "https://github.com/kornia/data/raw/main/crowd.jpg"
+    filename = tmp_path_factory.mktemp("data") / "image.jpg"
+    filename = _download_image(url, str(filename))
+    return filename
+
+
+@pytest.fixture(scope="session")
+def images_fn(png_image, jpg_image):
+    return {"png": png_image, "jpg": jpg_image}
 
 
 @pytest.mark.skipif(not available_package(), reason="kornia_rs only supports python >=3.7 and pt >= 1.10.0")
@@ -35,22 +70,18 @@ class TestIoImage:
         img_th: Tensor = create_random_img8_torch(height, width, 3)
 
         file_path = tmp_path / "image.jpg"
-        write_image(file_path, img_th)
+        write_image(str(file_path), img_th)
 
         assert file_path.is_file()
 
-        img_load: Tensor = load_image(file_path, ImageLoadType.UNCHANGED)
+        img_load: Tensor = load_image(str(file_path), ImageLoadType.UNCHANGED)
 
         assert img_th.shape == img_load.shape
         assert img_th.shape[1:] == (height, width)
         assert str(img_th.device) == "cpu"
 
-    def test_device(self, device, tmp_path: Path) -> None:
-        height, width = 4, 5
-        img_np: np.ndarray = create_random_img8(height, width, 3)
-
-        file_path = tmp_path / "image.png"
-        cv2.imwrite(str(file_path), img_np)
+    def test_device(self, device, png_image: Path) -> None:
+        file_path = Path(png_image)
 
         assert file_path.is_file()
 
@@ -58,61 +89,39 @@ class TestIoImage:
         assert str(img_th.device) == str(device)
 
     @pytest.mark.parametrize("ext", ["png", "jpg"])
-    def test_types_color(self, tmp_path: Path, ext) -> None:
-        height, width = 4, 5
-        img_np: np.ndarray = create_random_img8(height, width, 3)
-
-        file_path = tmp_path / f"image.{ext}"
-        cv2.imwrite(str(file_path), img_np)
-
-        assert file_path.is_file()
-
-        img = load_image(file_path, ImageLoadType.GRAY8)
-        assert img.shape[0] == 1
-        assert img.dtype == torch.uint8
-
-        img = load_image(file_path, ImageLoadType.GRAY32)
-        assert img.shape[0] == 1
-        assert img.dtype == torch.float32
-
-        img = load_image(file_path, ImageLoadType.RGB8)
-        assert img.shape[0] == 3
-        assert img.dtype == torch.uint8
-
-        img = load_image(file_path, ImageLoadType.RGB32)
-        assert img.shape[0] == 3
-        assert img.dtype == torch.float32
-
-        img = load_image(file_path, ImageLoadType.RGBA8)
-        assert img.shape[0] == 4
-        assert img.dtype == torch.uint8
-
-    @pytest.mark.parametrize("ext", ["png", "jpg"])
-    def test_types_gray(self, tmp_path: Path, ext) -> None:
-        height, width = 4, 5
-        img_np: np.ndarray = create_random_img8(height, width, 1)
-
-        file_path = tmp_path / f"image.{ext}"
-        cv2.imwrite(str(file_path), img_np)
+    @pytest.mark.parametrize(
+        "channels,load_type,expected_type,expected_channels",
+        [
+            # NOTE: these tests which should write and load images with channel size != 3, didn't do it
+            # (1, ImageLoadType.GRAY8, torch.uint8, 1),
+            (3, ImageLoadType.GRAY8, torch.uint8, 1),
+            # (4, ImageLoadType.GRAY8, torch.uint8, 1),
+            # (1, ImageLoadType.GRAY32, torch.float32, 1),
+            (3, ImageLoadType.GRAY32, torch.float32, 1),
+            # (4, ImageLoadType.GRAY32, torch.float32, 1),
+            (3, ImageLoadType.RGB8, torch.uint8, 3),
+            # (1, ImageLoadType.RGB8, torch.uint8, 3),
+            (3, ImageLoadType.RGBA8, torch.uint8, 4),
+            # (1, ImageLoadType.RGB32, torch.float32, 3),
+            (3, ImageLoadType.RGB32, torch.float32, 3),
+        ],
+    )
+    def test_load_image(self, images_fn, ext, channels, load_type, expected_type, expected_channels):
+        file_path = images_fn[ext]
 
         assert file_path.is_file()
 
-        img = load_image(file_path, ImageLoadType.GRAY8)
-        assert img.shape[0] == 1
-        assert img.dtype == torch.uint8
+        img = load_image(file_path, load_type)
+        assert img.shape[0] == expected_channels
+        assert img.dtype == expected_type
 
-        img = load_image(file_path, ImageLoadType.GRAY32)
-        assert img.shape[0] == 1
-        assert img.dtype == torch.float32
+    @pytest.mark.parametrize("ext", ["jpg"])
+    @pytest.mark.parametrize("channels", [3])
+    def test_write_image(self, device, tmp_path, ext, channels):
+        height, width = 4, 5
+        img_th: Tensor = create_random_img8_torch(height, width, channels, device)
 
-        img = load_image(file_path, ImageLoadType.RGB8)
-        assert img.shape[0] == 3
-        assert img.dtype == torch.uint8
+        file_path = tmp_path / f"image.{ext}"
+        write_image(file_path, img_th)
 
-        img = load_image(file_path, ImageLoadType.RGB32)
-        assert img.shape[0] == 3
-        assert img.dtype == torch.float32
-
-        img = load_image(file_path, ImageLoadType.RGBA8)
-        assert img.shape[0] == 4
-        assert img.dtype == torch.uint8
+        assert file_path.is_file()

@@ -47,6 +47,13 @@ class MultiHeadAttention(Module):
         head_size = emb_size // num_heads  # from timm
         self.scale = head_size**-0.5  # from timm
 
+        if self.emb_size % self.num_heads:
+            raise ValueError(
+                f"Size of embedding inside the transformer decoder must be visible by number of heads"
+                f"for correct multi-head attention "
+                f"Got: {self.emb_size} embedding size and {self.num_heads} numbers of heads"
+            )
+
         # fuse the queries, keys and values in one matrix
         self.qkv = nn.Linear(emb_size, emb_size * 3, bias=False)
         self.att_drop = nn.Dropout(att_drop)
@@ -58,16 +65,16 @@ class MultiHeadAttention(Module):
         # split keys, queries and values in num_heads
         # NOTE: the line below differs from timm
         # timm: qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
-        qkv = self.qkv(x).reshape(B, N, 3, -1, C).permute(2, 0, 3, 1, 4)
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         # sum up over the last axis
-        att = torch.einsum('bhqd, bhkd -> bhqk', q, k) * self.scale
+        att = torch.einsum("bhqd, bhkd -> bhqk", q, k) * self.scale
         att = att.softmax(dim=-1)
         att = self.att_drop(att)
 
         # sum up over the third axis
-        out = torch.einsum('bhal, bhlv -> bhav ', att, v)
+        out = torch.einsum("bhal, bhlv -> bhav ", att, v)
         out = out.permute(0, 2, 1, 3).contiguous().view(B, N, -1)
         out = self.projection(out)
         out = self.projection_drop(out)
@@ -221,8 +228,7 @@ class VisionTransformer(Module):
 
         if self.image_size not in (*x.shape[-2:],) and x.shape[-3] != self.in_channels:
             raise ValueError(
-                f"Input image shape must be Bx{self.in_channels}x{self.image_size}x{self.image_size}. "
-                f"Got: {x.shape}"
+                f"Input image shape must be Bx{self.in_channels}x{self.image_size}x{self.image_size}. Got: {x.shape}"
             )
 
         out = self.patch_embedding(x)

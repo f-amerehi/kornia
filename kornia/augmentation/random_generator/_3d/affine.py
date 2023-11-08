@@ -1,9 +1,8 @@
 from typing import Dict, Optional, Tuple, Union
 
 import torch
-from torch.distributions import Uniform
 
-from kornia.augmentation.random_generator.base import RandomGeneratorBase
+from kornia.augmentation.random_generator.base import RandomGeneratorBase, UniformDistribution
 from kornia.augmentation.utils import _adapted_rsampling, _singular_range_check, _tuple_range_reader
 from kornia.utils.helpers import _extract_device_dtype
 
@@ -103,18 +102,18 @@ class AffineGenerator3D(RandomGeneratorBase):
         shear: Optional[torch.Tensor] = None
         if self.shears is not None:
             shear = _tuple_range_reader(self.shears, 6, device, dtype)
-            self.sxy_sampler = Uniform(shear[0, 0], shear[0, 1], validate_args=False)
-            self.sxz_sampler = Uniform(shear[1, 0], shear[1, 1], validate_args=False)
-            self.syx_sampler = Uniform(shear[2, 0], shear[2, 1], validate_args=False)
-            self.syz_sampler = Uniform(shear[3, 0], shear[3, 1], validate_args=False)
-            self.szx_sampler = Uniform(shear[4, 0], shear[4, 1], validate_args=False)
-            self.szy_sampler = Uniform(shear[5, 0], shear[5, 1], validate_args=False)
+            self.sxy_sampler = UniformDistribution(shear[0, 0], shear[0, 1], validate_args=False)
+            self.sxz_sampler = UniformDistribution(shear[1, 0], shear[1, 1], validate_args=False)
+            self.syx_sampler = UniformDistribution(shear[2, 0], shear[2, 1], validate_args=False)
+            self.syz_sampler = UniformDistribution(shear[3, 0], shear[3, 1], validate_args=False)
+            self.szx_sampler = UniformDistribution(shear[4, 0], shear[4, 1], validate_args=False)
+            self.szy_sampler = UniformDistribution(shear[5, 0], shear[5, 1], validate_args=False)
 
         # check translation range
         self._translate: Optional[torch.Tensor] = None
         if self.translate is not None:
             self._translate = torch.as_tensor(self.translate, device=device, dtype=dtype)
-            _singular_range_check(self._translate, 'translate', bounds=(0, 1), mode='3d')
+            _singular_range_check(self._translate, "translate", bounds=(0, 1), mode="3d")
 
         # check scale range
         self._scale: Optional[torch.Tensor] = None
@@ -126,18 +125,18 @@ class AffineGenerator3D(RandomGeneratorBase):
                 raise ValueError(f"'scale' shall be either shape (2) or (3, 2). Got {self.scale}.")
             else:
                 self._scale = _scale
-            _singular_range_check(self._scale[0], 'scale-x', bounds=(0, float('inf')), mode='2d')
-            _singular_range_check(self._scale[1], 'scale-y', bounds=(0, float('inf')), mode='2d')
-            _singular_range_check(self._scale[2], 'scale-z', bounds=(0, float('inf')), mode='2d')
-            self.scale_1_sampler = Uniform(self._scale[0, 0], self._scale[0, 1], validate_args=False)
-            self.scale_2_sampler = Uniform(self._scale[1, 0], self._scale[1, 1], validate_args=False)
-            self.scale_3_sampler = Uniform(self._scale[2, 0], self._scale[2, 1], validate_args=False)
+            _singular_range_check(self._scale[0], "scale-x", bounds=(0, float("inf")), mode="2d")
+            _singular_range_check(self._scale[1], "scale-y", bounds=(0, float("inf")), mode="2d")
+            _singular_range_check(self._scale[2], "scale-z", bounds=(0, float("inf")), mode="2d")
+            self.scale_1_sampler = UniformDistribution(self._scale[0, 0], self._scale[0, 1], validate_args=False)
+            self.scale_2_sampler = UniformDistribution(self._scale[1, 0], self._scale[1, 1], validate_args=False)
+            self.scale_3_sampler = UniformDistribution(self._scale[2, 0], self._scale[2, 1], validate_args=False)
 
-        self.yaw_sampler = Uniform(degrees[0][0], degrees[0][1], validate_args=False)
-        self.pitch_sampler = Uniform(degrees[1][0], degrees[1][1], validate_args=False)
-        self.roll_sampler = Uniform(degrees[2][0], degrees[2][1], validate_args=False)
+        self.yaw_sampler = UniformDistribution(degrees[0][0], degrees[0][1], validate_args=False)
+        self.pitch_sampler = UniformDistribution(degrees[1][0], degrees[1][1], validate_args=False)
+        self.roll_sampler = UniformDistribution(degrees[2][0], degrees[2][1], validate_args=False)
 
-        self.uniform_sampler = Uniform(
+        self.uniform_sampler = UniformDistribution(
             torch.tensor(0, device=device, dtype=dtype),
             torch.tensor(1, device=device, dtype=dtype),
             validate_args=False,
@@ -150,7 +149,12 @@ class AffineGenerator3D(RandomGeneratorBase):
         width = batch_shape[-1]
 
         if not (
-            type(depth) is int and depth > 0 and type(height) is int and height > 0 and type(width) is int and width > 0
+            isinstance(depth, int)
+            and depth > 0
+            and isinstance(height, int)
+            and height > 0
+            and isinstance(width, int)
+            and width > 0
         ):
             raise AssertionError(f"'depth', 'height' and 'width' must be integers. Got {depth}, {height}, {width}.")
 
@@ -206,14 +210,14 @@ class AffineGenerator3D(RandomGeneratorBase):
             sxy = sxz = syx = syz = szx = szy = torch.tensor([0] * batch_size, device=_device, dtype=_dtype)
 
         return {
-            'translations': torch.as_tensor(translations, device=_device, dtype=_dtype),
-            'center': torch.as_tensor(center, device=_device, dtype=_dtype),
-            'scale': torch.as_tensor(scale, device=_device, dtype=_dtype),
-            'angles': torch.as_tensor(angles, device=_device, dtype=_dtype),
-            'sxy': torch.as_tensor(sxy, device=_device, dtype=_dtype),
-            'sxz': torch.as_tensor(sxz, device=_device, dtype=_dtype),
-            'syx': torch.as_tensor(syx, device=_device, dtype=_dtype),
-            'syz': torch.as_tensor(syz, device=_device, dtype=_dtype),
-            'szx': torch.as_tensor(szx, device=_device, dtype=_dtype),
-            'szy': torch.as_tensor(szy, device=_device, dtype=_dtype),
+            "translations": torch.as_tensor(translations, device=_device, dtype=_dtype),
+            "center": torch.as_tensor(center, device=_device, dtype=_dtype),
+            "scale": torch.as_tensor(scale, device=_device, dtype=_dtype),
+            "angles": torch.as_tensor(angles, device=_device, dtype=_dtype),
+            "sxy": torch.as_tensor(sxy, device=_device, dtype=_dtype),
+            "sxz": torch.as_tensor(sxz, device=_device, dtype=_dtype),
+            "syx": torch.as_tensor(syx, device=_device, dtype=_dtype),
+            "syz": torch.as_tensor(syz, device=_device, dtype=_dtype),
+            "szx": torch.as_tensor(szx, device=_device, dtype=_dtype),
+            "szy": torch.as_tensor(szy, device=_device, dtype=_dtype),
         }

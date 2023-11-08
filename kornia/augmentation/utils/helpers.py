@@ -25,7 +25,7 @@ def _validate_input(f: Callable[..., Any]) -> Callable[..., Any]:
         if not torch.is_tensor(input):
             raise TypeError(f"Input type is not a Tensor. Got {type(input)}")
 
-        _validate_shape(input.shape, required_shapes=('BCHW',))
+        _validate_shape(input.shape, required_shapes=("BCHW",))
         _validate_input_dtype(input, accepted_dtypes=[torch.float16, torch.float32, torch.float64])
 
         return f(input, *args, **kwargs)
@@ -50,7 +50,7 @@ def _validate_input3d(f: Callable[..., Any]) -> Callable[..., Any]:
 
         input_shape = len(input.shape)
         if input_shape != 5:
-            raise AssertionError(f'Expect input of 5 dimensions, got {input_shape} instead')
+            raise AssertionError(f"Expect input of 5 dimensions, got {input_shape} instead")
         _validate_input_dtype(input, accepted_dtypes=[torch.float16, torch.float32, torch.float64])
 
         return f(input, *args, **kwargs)
@@ -153,7 +153,7 @@ def _transform_output_shape(output: Tensor, shape: Tuple[int, ...]) -> Tensor:
 
     for dim in range(len(out_tensor.shape) - len(shape)):
         if out_tensor.shape[0] != 1:
-            raise AssertionError(f'Dimension {dim} of input is ' f'expected to be 1, got {out_tensor.shape[0]}')
+            raise AssertionError(f"Dimension {dim} of input is expected to be 1, got {out_tensor.shape[0]}")
         out_tensor = out_tensor.squeeze(0)
 
     return out_tensor
@@ -228,8 +228,8 @@ def _adapted_sampling(
 
 def _adapted_uniform(
     shape: Union[Tuple[int, ...], torch.Size],
-    low: Union[float, int, Tensor],
-    high: Union[float, int, Tensor],
+    low: Union[float, Tensor],
+    high: Union[float, Tensor],
     same_on_batch: bool = False,
 ) -> Tensor:
     r"""The uniform sampling function that accepts 'same_on_batch'.
@@ -253,8 +253,8 @@ def _adapted_uniform(
 
 def _adapted_beta(
     shape: Union[Tuple[int, ...], torch.Size],
-    a: Union[float, int, Tensor],
-    b: Union[float, int, Tensor],
+    a: Union[float, Tensor],
+    b: Union[float, Tensor],
     same_on_batch: bool = False,
 ) -> Tensor:
     r"""The beta sampling function that accepts 'same_on_batch'.
@@ -295,7 +295,7 @@ def deepcopy_dict(params: Dict[str, Any]) -> Dict[str, Any]:
 def override_parameters(
     params: Dict[str, Any],
     params_override: Optional[Dict[str, Any]] = None,
-    if_none_exist: str = 'ignore',
+    if_none_exist: str = "ignore",
     in_place: bool = False,
 ) -> Dict[str, Any]:
     """Override params dict w.r.t params_override.
@@ -314,9 +314,9 @@ def override_parameters(
     for k, v in params_override.items():
         if k in params_override:
             out[k] = v
-        elif if_none_exist == 'ignore':
+        elif if_none_exist == "ignore":
             pass
-        elif if_none_exist == 'raise':
+        elif if_none_exist == "raise":
             raise RuntimeError(f"Param `{k}` not existed in `{params_override}`.")
         else:
             raise ValueError(f"`{if_none_exist}` is not a valid option.")
@@ -380,3 +380,14 @@ def preprocess_classes(input: Tensor) -> Tensor:
     """Preprocess input class tags."""
     # TODO: We may allow list here.
     return input
+
+
+class MultiprocessWrapper:
+    """Utility class which when used as a base class, makes the class work with the 'spawn' multiprocessing
+    context."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        args = tuple(arg.clone() if isinstance(arg, torch.Tensor) else arg for arg in args)
+        kwargs = {key: val.clone() if isinstance(val, torch.Tensor) else val for key, val in kwargs.items()}
+
+        super().__init__(*args, **kwargs)

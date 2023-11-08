@@ -2,9 +2,8 @@ from typing import Dict, Tuple, Union
 
 import torch
 from torch import Tensor
-from torch.distributions import Uniform
 
-from kornia.augmentation.random_generator.base import RandomGeneratorBase
+from kornia.augmentation.random_generator.base import RandomGeneratorBase, UniformDistribution
 from kornia.augmentation.utils import _adapted_rsampling, _common_param_check, _joint_range_check
 from kornia.utils.helpers import _extract_device_dtype
 
@@ -44,9 +43,9 @@ class RandomGaussianBlurGenerator(RandomGeneratorBase):
         else:
             sigma = self.sigma.to(device=device, dtype=dtype)
 
-        _joint_range_check(sigma, "sigma", (0, float('inf')))
+        _joint_range_check(sigma, "sigma", (0, float("inf")))
 
-        self.sigma_sampler = Uniform(sigma[0], sigma[1], validate_args=False)
+        self.sigma_sampler = UniformDistribution(sigma[0], sigma[1], validate_args=False)
 
     def forward(self, batch_shape: Tuple[int, ...], same_on_batch: bool = False) -> Dict[str, Tensor]:
         batch_size = batch_shape[0]

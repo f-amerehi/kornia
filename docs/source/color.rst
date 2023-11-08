@@ -6,8 +6,7 @@ kornia.color
 The functions in this section perform various color space conversions.
 
 .. note::
-   Check a tutorial for color space conversions `here <https://kornia-tutorials.readthedocs.io/en/latest/
-   hello_world_tutorial.html>`__.
+   Check a tutorial for color space conversions `here <https://kornia.github.io/tutorials/nbs/hello_world_tutorial.html>`__.
 
 
 Grayscale
@@ -188,9 +187,11 @@ Bayer RAW
 
 .. autofunction:: rgb_to_raw
 .. autofunction:: raw_to_rgb
+.. autofunction:: raw_to_rgb_2x2_downscaled
 
 .. autoclass:: RawToRgb
 .. autoclass:: RgbToRaw
+.. autoclass:: RawToRgb2x2Downscaled
 
 Sepia
 -----

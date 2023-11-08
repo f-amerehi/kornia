@@ -14,7 +14,7 @@ from .params import ParamItem
 
 DataType = Union[Tensor, List[Tensor], Boxes, Keypoints]
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class SequentialOpsInterface(Generic[T], metaclass=ABCMeta):
@@ -25,7 +25,7 @@ class SequentialOpsInterface(Generic[T], metaclass=ABCMeta):
         if isinstance(param, ParamItem) and isinstance(param.data, dict):
             _params = param.data
         else:
-            raise TypeError(f'Expected param (ParamItem.data) be a dictionary. Gotcha {param}.')
+            raise TypeError(f"Expected param (ParamItem.data) be a dictionary. Gotcha {param}.")
         return _params
 
     @classmethod
@@ -33,7 +33,7 @@ class SequentialOpsInterface(Generic[T], metaclass=ABCMeta):
         if isinstance(param, ParamItem) and isinstance(param.data, list):
             _params = param.data
         else:
-            raise TypeError(f'Expected param (ParamItem.data) be a list. Gotcha {param}.')
+            raise TypeError(f"Expected param (ParamItem.data) be a list. Gotcha {param}.")
         return _params
 
     @classmethod
@@ -91,6 +91,8 @@ class AugmentationSequentialOps:
             return BoxSequentialOps
         if data_key == DataKey.KEYPOINTS:
             return KeypointSequentialOps
+        if data_key == DataKey.CLASS:
+            return ClassSequentialOps
         raise RuntimeError(f"Operation for `{data_key.name}` is not found.")
 
     def transform(
@@ -102,6 +104,19 @@ class AugmentationSequentialOps:
         data_keys: Optional[Union[List[str], List[int], List[DataKey]]] = None,
     ) -> Union[DataType, List[DataType]]:
         _data_keys = self.preproc_datakeys(data_keys)
+
+        if isinstance(module, K.RandomTransplantation):
+            # For transforms which require the full input to calculate the parameters (e.g. RandomTransplantation)
+            param = ParamItem(
+                name=param.name,
+                data=module.params_from_input(
+                    *arg,  # type: ignore[arg-type]
+                    data_keys=_data_keys,
+                    params=param.data,  # type: ignore[arg-type]
+                    extra_args=extra_args,
+                ),
+            )
+
         outputs = []
         for inp, dcate in zip(arg, _data_keys):
             op = self._get_op(dcate)
@@ -130,10 +145,10 @@ class AugmentationSequentialOps:
         return outputs
 
 
-P = ParamSpec('P')
+P = ParamSpec("P")
 
 
-def make_input_only_sequential(module: 'K.container.ImageSequentialBase') -> Callable[P, Tensor]:
+def make_input_only_sequential(module: "K.container.ImageSequentialBase") -> Callable[P, Tensor]:
     """Disable all other additional inputs (e.g. ) for ImageSequential."""
 
     def f(*args: P.args, **kwargs: P.kwargs) -> Tensor:
@@ -142,7 +157,7 @@ def make_input_only_sequential(module: 'K.container.ImageSequentialBase') -> Cal
     return f
 
 
-def get_geometric_only_param(module: 'K.container.ImageSequentialBase', param: List[ParamItem]) -> List[ParamItem]:
+def get_geometric_only_param(module: "K.container.ImageSequentialBase", param: List[ParamItem]) -> List[ParamItem]:
     named_modules = module.get_forward_sequence(param)
 
     res: List[ParamItem] = []
@@ -156,7 +171,7 @@ class InputSequentialOps(SequentialOpsInterface[Tensor]):
     @classmethod
     def transform(cls, input: Tensor, module: Module, param: ParamItem, extra_args: Dict[str, Any] = {}) -> Tensor:
         if isinstance(module, (_AugmentationBase, K.MixAugmentationBaseV2)):
-            input = module(input, params=cls.get_instance_module_param(param), **extra_args)
+            input = module(input, params=cls.get_instance_module_param(param), data_keys=[DataKey.INPUT], **extra_args)
         elif isinstance(module, (K.container.ImageSequentialBase,)):
             input = module.transform_inputs(input, params=cls.get_sequential_module_param(param), extra_args=extra_args)
         elif isinstance(module, (K.auto.operations.OperationBase,)):
@@ -173,8 +188,7 @@ class InputSequentialOps(SequentialOpsInterface[Tensor]):
             input = module.inverse(input, params=cls.get_instance_module_param(param), **extra_args)
         elif isinstance(module, (K.GeometricAugmentationBase3D,)):
             raise NotImplementedError(
-                "The support for 3d inverse operations are not yet supported. "
-                "You are welcome to file a PR in our repo."
+                "The support for 3d inverse operations are not yet supported. You are welcome to file a PR in our repo."
             )
         elif isinstance(module, (K.auto.operations.OperationBase,)):
             return InputSequentialOps.inverse(input, module=module.op, param=param, extra_args=extra_args)
@@ -182,6 +196,22 @@ class InputSequentialOps(SequentialOpsInterface[Tensor]):
             input = module.inverse_inputs(input, params=cls.get_sequential_module_param(param), extra_args=extra_args)
         elif isinstance(module, K.container.ImageSequentialBase):
             input = module.inverse_inputs(input, params=cls.get_sequential_module_param(param), extra_args=extra_args)
+        return input
+
+
+class ClassSequentialOps(SequentialOpsInterface[Tensor]):
+    """Apply and inverse transformations for class labels if needed."""
+
+    @classmethod
+    def transform(cls, input: Tensor, module: Module, param: ParamItem, extra_args: Dict[str, Any] = {}) -> Tensor:
+        if isinstance(module, K.MixAugmentationBaseV2):
+            raise NotImplementedError(
+                "The support for class labels for mix augmentations that change the class label is not yet supported."
+            )
+        return input
+
+    @classmethod
+    def inverse(cls, input: Tensor, module: Module, param: ParamItem, extra_args: Dict[str, Any] = {}) -> Tensor:
         return input
 
 
@@ -211,6 +241,9 @@ class MaskSequentialOps(SequentialOpsInterface[Tensor]):
             raise NotImplementedError(
                 "The support for 3d mask operations are not yet supported. You are welcome to file a PR in our repo."
             )
+
+        elif isinstance(module, K.RandomTransplantation):
+            input = module(input, params=cls.get_instance_module_param(param), data_keys=[DataKey.MASK], **extra_args)
 
         elif isinstance(module, (_AugmentationBase)):
             input = module.transform_masks(
@@ -327,7 +360,11 @@ class BoxSequentialOps(SequentialOpsInterface[Boxes]):
                 raise ValueError(f"No valid transformation matrix found in {module.__class__}.")
             transform = module.compute_inverse_transformation(module.transform_matrix)
             _input = module.inverse_boxes(
-                _input, param.data, module.flags, transform=transform, **extra_args  # type: ignore
+                _input,
+                param.data,  # type: ignore[arg-type]
+                module.flags,
+                transform=transform,
+                **extra_args,
             )
 
         elif isinstance(module, (K.GeometricAugmentationBase3D,)):

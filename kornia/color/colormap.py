@@ -18,6 +18,7 @@ def _list_color_to_tensor(
 
 class ColorMap(ABC):
     r"""Abstract class to represents a color map."""
+
     colors: Tensor
 
     def __init__(
@@ -33,7 +34,7 @@ class ColorMap(ABC):
         self.colors = interpolate(
             _list_color_to_tensor(base_colormap, dtype=self._dtype, device=self._device)[None, ...],
             size=num_colors,
-            mode='linear',
+            mode="linear",
         )[0, ...]
 
     def __len__(self) -> int:
@@ -159,7 +160,7 @@ def apply_colormap(input_tensor: Tensor, colormap: ColorMap) -> Tensor:
     elif len(input_tensor.shape) == 3 and input_tensor.shape[0] == 1:  # if (1 X H x W)
         input_tensor = input_tensor[0, ...]  # (H x W)
 
-    keys = torch.arange(0, len(colormap), dtype=input_tensor.dtype, device=input_tensor.device)  # (num_colors)
+    keys = torch.arange(0, len(colormap) - 1, dtype=input_tensor.dtype, device=input_tensor.device)  # (num_colors)
 
     index = torch.bucketize(input_tensor, keys)  # shape equals <input_tensor>: (B x H x W) or (H x W)
 

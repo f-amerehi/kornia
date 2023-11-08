@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 
 from kornia.core import Module, Tensor
@@ -54,7 +56,7 @@ class DISK(Module):
 
         if unet_output.shape[1] != self.desc_dim + 1:
             raise ValueError(
-                f'U-Net output has {unet_output.shape[1]} channels, but expected self.desc_dim={self.desc_dim} + 1.'
+                f"U-Net output has {unet_output.shape[1]} channels, but expected self.desc_dim={self.desc_dim} + 1."
             )
 
         descriptors = unet_output[:, : self.desc_dim]
@@ -65,7 +67,7 @@ class DISK(Module):
     def forward(
         self,
         images: Tensor,
-        n: int | None = None,
+        n: Optional[int] = None,
         window_size: int = 5,
         score_threshold: float = 0.0,
         pad_if_not_divisible: bool = False,
@@ -104,7 +106,7 @@ class DISK(Module):
         return features
 
     @classmethod
-    def from_pretrained(cls, checkpoint: str = 'depth', device: torch.device = torch.device('cpu')) -> DISK:
+    def from_pretrained(cls, checkpoint: str = "depth", device: torch.device = torch.device("cpu")) -> DISK:
         r"""Loads a pretrained model.
 
         Depth model was trained using depth map supervision and is slightly more precise but biased to detect keypoints
@@ -120,16 +122,16 @@ class DISK(Module):
             The pretrained model.
         """
         urls = {
-            'depth': 'https://raw.githubusercontent.com/cvlab-epfl/disk/master/depth-save.pth',
-            'epipolar': 'https://raw.githubusercontent.com/cvlab-epfl/disk/master/epipolar-save.pth',
+            "depth": "https://raw.githubusercontent.com/cvlab-epfl/disk/master/depth-save.pth",
+            "epipolar": "https://raw.githubusercontent.com/cvlab-epfl/disk/master/epipolar-save.pth",
         }
 
         if checkpoint not in urls:
-            raise ValueError(f'Unknown pretrained model: {checkpoint}')
+            raise ValueError(f"Unknown pretrained model: {checkpoint}")
 
         pretrained_dict = torch.hub.load_state_dict_from_url(urls[checkpoint], map_location=device)
 
         model: DISK = cls().to(device)
-        model.load_state_dict(pretrained_dict['extractor'])
+        model.load_state_dict(pretrained_dict["extractor"])
         model.eval()
         return model

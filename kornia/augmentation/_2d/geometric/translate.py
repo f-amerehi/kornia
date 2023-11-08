@@ -18,7 +18,7 @@ class RandomTranslate(GeometricAugmentationBase2D):
             For example translate_y=(a, b), then vertical shift
             is randomly sampled in the range img_height * a < dy < img_height * b.
         resample: resample mode from "nearest" (0) or "bilinear" (1).
-        padding_mode: padding mode from "zeros" (0), "border" (1) or "refection" (2).
+        padding_mode: padding mode from "zeros" (0), "border" (1) or "reflection" (2).
         same_on_batch: apply the same transformation across the batch.
         align_corners: interpolation flag.
         p: probability of applying the transformation.
@@ -83,7 +83,7 @@ class RandomTranslate(GeometricAugmentationBase2D):
     ) -> Tensor:
         _, _, height, width = input.shape
         if not isinstance(transform, Tensor):
-            raise TypeError(f'Expected the `transform` be a Tensor. Got {type(transform)}.')
+            raise TypeError(f"Expected the `transform` be a Tensor. Got {type(transform)}.")
 
         return warp_affine(
             input,
@@ -102,7 +102,7 @@ class RandomTranslate(GeometricAugmentationBase2D):
         size: Optional[Tuple[int, int]] = None,
     ) -> Tensor:
         if not isinstance(transform, Tensor):
-            raise TypeError(f'Expected the `transform` be a Tensor. Got {type(transform)}.')
+            raise TypeError(f"Expected the `transform` be a Tensor. Got {type(transform)}.")
         return self.apply_transform(
             input,
             params=self._params,

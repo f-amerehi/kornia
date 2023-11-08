@@ -117,8 +117,7 @@ class ResNet(Module):
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
             raise ValueError(
-                "replace_stride_with_dilation should be None "
-                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+                f"replace_stride_with_dilation should be None or a 3-element tuple, got {replace_stride_with_dilation}"
             )
         self.groups = groups
         self.base_width = width_per_group
@@ -135,7 +134,7 @@ class ResNet(Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -289,11 +288,11 @@ class DeFMO(Module):
         # use torch.hub to load pretrained model
         if pretrained:
             pretrained_dict = torch.hub.load_state_dict_from_url(
-                urls['defmo_encoder'], map_location=map_location_to_cpu
+                urls["defmo_encoder"], map_location=map_location_to_cpu
             )
             self.encoder.load_state_dict(pretrained_dict, strict=True)
             pretrained_dict_ren = torch.hub.load_state_dict_from_url(
-                urls['defmo_rendering'], map_location=map_location_to_cpu
+                urls["defmo_rendering"], map_location=map_location_to_cpu
             )
             self.rendering.load_state_dict(pretrained_dict_ren, strict=True)
         self.eval()
